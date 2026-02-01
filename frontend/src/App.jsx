@@ -13,7 +13,8 @@ import AdminPanel from "./pages/AdminPanel";
 import AdminUsers from "./pages/AdminUsers";
 import AccommodationBooking from "./pages/AccommodationBooking";
 import MyAccommodation from "./pages/MyAccommodation";
-import PaymentPage from "./pages/PaymentPage"; // ⭐ Added Import
+import PaymentPage from "./pages/PaymentPage"; 
+import AdminRefunds from "./pages/AdminRefunds";
 
 export default function App() {
   return (
@@ -40,12 +41,14 @@ export default function App() {
         {/* ⭐ Payment Route */}
         <Route path="/payment" element={<PaymentPage />} />
 
-        {/* Admin Routes */}
+        {/* 🛡️ Admin Routes */}
         <Route path="/admin" element={<AdminPanel />} />
         <Route path="/admin-users" element={<AdminUsers />} />
+        {/* ✅ Fixed: Moved Refund Route INSIDE protected block */}
+        <Route path="/admin/refunds" element={<AdminRefunds />} />
       </Route>
 
-      {/* 🚩 Catch-all */}
+      {/* 🚩 Catch-all (MUST BE LAST) */}
       <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>
   );

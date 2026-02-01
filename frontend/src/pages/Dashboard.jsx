@@ -84,7 +84,7 @@ export default function Dashboard() {
             <h2 className="text-2xl font-bold text-white">Admin Control Panel</h2>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {/* SLOT MANAGEMENT */}
             <button 
               onClick={() => navigate("/admin")}
@@ -106,6 +106,18 @@ export default function Dashboard() {
                 View registered users
               </span>
             </button>
+
+            {/* ✅ NEW: REFUND REQUESTS (Styled to match) */}
+            <button 
+              onClick={() => navigate("/admin/refunds")}
+              className="bg-slate-800 hover:bg-slate-700 text-white p-6 rounded-xl border border-slate-700 transition flex flex-col items-start gap-2 group"
+            >
+              <span className="font-bold text-lg group-hover:text-green-400 transition-colors">💸 Refund Requests</span>
+              <span className="text-sm text-gray-400">
+                View & process pending refunds
+              </span>
+            </button>
+
           </div>
         </div>
       )}

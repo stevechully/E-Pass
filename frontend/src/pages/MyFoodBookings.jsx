@@ -33,7 +33,7 @@ export default function MyFoodBookings() {
 
   async function cancelBooking(id) {
     const token = localStorage.getItem("token");
-    if (!confirm("Cancel this food booking?")) return;
+    if (!confirm("Are you sure you want to cancel this food booking?")) return;
 
     const res = await fetch(`http://localhost:5000/api/food/cancel/${id}`, {
       method: "POST",
@@ -44,7 +44,12 @@ export default function MyFoodBookings() {
 
     const data = await res.json();
     if (data.success) {
-      alert("Booking cancelled ✅");
+      // ✅ Detailed Alert for better UX
+      alert(
+        "✅ Booking Cancelled Successfully!\n\n" +
+        "💰 Refund Initiated\n" +
+        "ℹ️ Please check the 'Payments' page to track your refund status."
+      );
       fetchBookings();
     } else {
       alert(data.message || "Cancel failed");

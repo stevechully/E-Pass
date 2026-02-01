@@ -26,6 +26,12 @@ export const requireAuth = async (req, res, next) => {
       });
     }
 
+    // 🔴 DEBUG LOG: Verify exactly who the backend thinks is logged in
+    console.log("🔐 JWT AUTH USER:", {
+      email: data.user.email,
+      id: data.user.id
+    });
+
     req.user = {
       id: data.user.id,
       email: data.user.email
