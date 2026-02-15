@@ -1,6 +1,19 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom"; 
 import MainLayout from "../layouts/MainLayout";
+import { 
+  Shield, 
+  Ticket, 
+  ArrowRight, 
+  Calendar, 
+  CheckCircle, 
+  XCircle, 
+  Banknote, 
+  RefreshCcw, 
+  Leaf, 
+  Users, 
+  Clock 
+} from "lucide-react";
 
 export default function Dashboard() {
   const navigate = useNavigate(); 
@@ -26,7 +39,6 @@ export default function Dashboard() {
       
       if (json.success) {
         setStats(json.data);
-        // ✅ Sync admin status from local storage
         setIsAdmin(localStorage.getItem("isAdmin") === "true"); 
       }
     } catch (err) {
@@ -42,8 +54,14 @@ export default function Dashboard() {
       <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
         <div>
           <h1 className="text-3xl font-bold text-gray-800">Dashboard Overview</h1>
-          <p className="text-gray-500 mt-1">
-            {isAdmin ? "Admin Access Granted 🛡️" : "Welcome back! Here is what's happening today."}
+          <p className="text-gray-500 mt-1 flex items-center gap-2">
+            {isAdmin ? (
+              <span className="flex items-center gap-2 text-emerald-600 font-medium">
+                <Shield className="w-4 h-4" /> Admin Access Granted
+              </span>
+            ) : (
+              "Welcome back! Here is what's happening today."
+            )}
           </p>
         </div>
         
@@ -53,7 +71,7 @@ export default function Dashboard() {
             className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-6 rounded-xl shadow-lg shadow-emerald-500/30 transition-all active:scale-95 flex items-center justify-center gap-2"
           >
             <span>My E-Pass</span>
-            <span className="text-lg">🎫</span>
+            <Ticket className="w-5 h-5" />
           </button>
 
           <button
@@ -61,26 +79,26 @@ export default function Dashboard() {
             className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-xl shadow-lg shadow-blue-500/30 transition-all active:scale-95 flex items-center justify-center gap-2"
           >
             <span>View My Bookings</span>
-            <span className="text-xl">→</span>
+            <ArrowRight className="w-5 h-5" />
           </button>
         </div>
       </div>
 
       {/* GRID CONTAINER */}
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <Card title="Total Bookings" value={stats.total_bookings} color="bg-blue-600" icon="📅" />
-        <Card title="Active Bookings" value={stats.active_bookings} color="bg-green-600" icon="✅" />
-        <Card title="Cancelled" value={stats.cancelled_bookings} color="bg-red-600" icon="❌" />
-        <Card title="Total Paid" value={`₹${stats.total_paid?.toLocaleString()}`} color="bg-purple-600" icon="💰" />
-        <Card title="Refunded" value={`₹${stats.total_refunded?.toLocaleString()}`} color="bg-orange-500" icon="🔄" />
-        <Card title="Eco Fee Status" value={stats.ecoFeePaid ? "Verified" : "Pending"} color="bg-emerald-600" icon="🌿" />
+        <Card title="Total Bookings" value={stats.total_bookings} color="bg-blue-600" icon={<Calendar className="w-6 h-6" />} />
+        <Card title="Active Bookings" value={stats.active_bookings} color="bg-green-600" icon={<CheckCircle className="w-6 h-6" />} />
+        <Card title="Cancelled" value={stats.cancelled_bookings} color="bg-red-600" icon={<XCircle className="w-6 h-6" />} />
+        <Card title="Total Paid" value={`₹${stats.total_paid?.toLocaleString()}`} color="bg-purple-600" icon={<Banknote className="w-6 h-6" />} />
+        <Card title="Refunded" value={`₹${stats.total_refunded?.toLocaleString()}`} color="bg-orange-500" icon={<RefreshCcw className="w-6 h-6" />} />
+        <Card title="Eco Fee Status" value={stats.ecoFeePaid ? "Verified" : "Pending"} color="bg-emerald-600" icon={<Leaf className="w-6 h-6" />} />
       </div>
 
-      {/* ✅ UPDATED ADMIN CONTROLS SECTION */}
+      {/* ADMIN CONTROLS SECTION */}
       {isAdmin && (
         <div className="mt-10 p-8 bg-slate-900 rounded-2xl border border-slate-700 shadow-2xl">
           <div className="flex items-center gap-3 mb-6">
-            <span className="text-2xl">🛡️</span>
+            <Shield className="text-emerald-400 w-8 h-8" />
             <h2 className="text-2xl font-bold text-white">Admin Control Panel</h2>
           </div>
 
@@ -88,10 +106,12 @@ export default function Dashboard() {
             {/* SLOT MANAGEMENT */}
             <button 
               onClick={() => navigate("/admin")}
-              className="bg-slate-800 hover:bg-slate-700 text-white p-6 rounded-xl border border-slate-700 transition flex flex-col items-start gap-2 group"
+              className="bg-slate-800 hover:bg-slate-700 text-white p-6 rounded-xl border border-slate-700 transition flex flex-col items-start gap-3 group"
             >
-              <span className="font-bold text-lg group-hover:text-green-400 transition-colors">Slot Management</span>
-              <span className="text-sm text-gray-400">
+              <div className="flex items-center gap-2 font-bold text-lg group-hover:text-green-400 transition-colors">
+                 <Clock className="w-5 h-5" /> Slot Management
+              </div>
+              <span className="text-sm text-gray-400 text-left">
                 Create & manage entry + food slots
               </span>
             </button>
@@ -99,21 +119,25 @@ export default function Dashboard() {
             {/* USER DIRECTORY */}
             <button 
               onClick={() => navigate("/admin-users")}
-              className="bg-slate-800 hover:bg-slate-700 text-white p-6 rounded-xl border border-slate-700 transition flex flex-col items-start gap-2 group"
+              className="bg-slate-800 hover:bg-slate-700 text-white p-6 rounded-xl border border-slate-700 transition flex flex-col items-start gap-3 group"
             >
-              <span className="font-bold text-lg group-hover:text-green-400 transition-colors">User Directory</span>
-              <span className="text-sm text-gray-400">
+              <div className="flex items-center gap-2 font-bold text-lg group-hover:text-green-400 transition-colors">
+                 <Users className="w-5 h-5" /> User Directory
+              </div>
+              <span className="text-sm text-gray-400 text-left">
                 View registered users
               </span>
             </button>
 
-            {/* ✅ NEW: REFUND REQUESTS (Styled to match) */}
+            {/* REFUND REQUESTS */}
             <button 
               onClick={() => navigate("/admin/refunds")}
-              className="bg-slate-800 hover:bg-slate-700 text-white p-6 rounded-xl border border-slate-700 transition flex flex-col items-start gap-2 group"
+              className="bg-slate-800 hover:bg-slate-700 text-white p-6 rounded-xl border border-slate-700 transition flex flex-col items-start gap-3 group"
             >
-              <span className="font-bold text-lg group-hover:text-green-400 transition-colors">💸 Refund Requests</span>
-              <span className="text-sm text-gray-400">
+              <div className="flex items-center gap-2 font-bold text-lg group-hover:text-green-400 transition-colors">
+                 <Banknote className="w-5 h-5" /> Refund Requests
+              </div>
+              <span className="text-sm text-gray-400 text-left">
                 View & process pending refunds
               </span>
             </button>
@@ -126,7 +150,9 @@ export default function Dashboard() {
       <div className="mt-10 bg-gradient-to-r from-gray-800 to-gray-900 shadow-xl rounded-2xl p-8 text-white flex flex-col md:flex-row justify-between items-center gap-6">
         <div className="flex-1">
           <div className="flex items-center gap-4 mb-4">
-            <div className="bg-white/10 p-3 rounded-lg text-2xl">📍</div>
+            <div className="bg-white/10 p-3 rounded-lg text-2xl">
+                <Calendar className="w-6 h-6 text-white" />
+            </div>
             <h2 className="text-xl font-bold">Upcoming Visit Details</h2>
           </div>
 
@@ -156,17 +182,17 @@ export default function Dashboard() {
 /**
  * PREMIUM CARD COMPONENT
  */
-function Card({ title, value, color, icon = "📊" }) {
+function Card({ title, value, color, icon }) {
   return (
-    <div className="bg-gradient-to-br from-white to-gray-50 
-                    rounded-2xl shadow-md p-6 
-                    hover:shadow-2xl hover:-translate-y-2 
+    <div className="bg-white
+                    rounded-2xl shadow-sm p-6 
+                    hover:shadow-xl hover:-translate-y-1 
                     transition duration-300 border border-gray-100 group">
-      <div className={`w-14 h-14 ${color} rounded-xl flex items-center justify-center text-white text-2xl mb-5 shadow-lg group-hover:scale-110 transition duration-300`}>
+      <div className={`w-14 h-14 ${color} rounded-xl flex items-center justify-center text-white mb-5 shadow-lg group-hover:scale-105 transition duration-300`}>
         {icon}
       </div>
       <h3 className="text-gray-500 text-sm font-medium uppercase tracking-tight">{title}</h3>
-      <p className="text-4xl font-black text-gray-900 mt-2">{value ?? 0}</p>
+      <p className="text-3xl font-bold text-gray-900 mt-2">{value ?? 0}</p>
     </div>
   );
 }

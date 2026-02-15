@@ -4,7 +4,12 @@ export default {
     "./src/**/*.{js,ts,jsx,tsx}",
   ],
   theme: {
-    extend: {},
+    extend: {
+      fontFamily: {
+        // This sets the default sans font to Inter
+        sans: ['Inter', 'sans-serif'],
+      },
+    },
   },
   plugins: [],
 }

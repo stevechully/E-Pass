@@ -8,7 +8,8 @@ const VALID_MODULES = ['EPASS', 'FOOD', 'ACCOMMODATION', 'ECO_FEE'];
  */
 export const confirmMockPayment = async (req, res, next) => {
   try {
-    const { module, booking_id, amount } = req.body;
+    // ✅ Receive payment_method from frontend
+    const { module, booking_id, amount, payment_method } = req.body;
     const userId = req.user.id;
 
     // 1. Basic Validation
@@ -30,12 +31,7 @@ export const confirmMockPayment = async (req, res, next) => {
     if (module === 'FOOD') {
       const { data: foodBooking } = await supabase
         .from('food_bookings')
-        .select(`
-          id,
-          food_slots (
-            meal_type
-          )
-        `)
+        .select(`id, food_slots ( meal_type )`)
         .eq('id', booking_id)
         .eq('user_id', userId)
         .single();
@@ -69,7 +65,7 @@ export const confirmMockPayment = async (req, res, next) => {
     }
 
     // 4. Insert mock payment
-    // 🔥 FIX #1: Removed transaction_id & used Explicit Select to bypass schema cache error
+    // ✅ Uses payment_method from body, or defaults to 'CARD'
     const { data: payment, error } = await supabase
       .from('payments')
       .insert({
@@ -78,9 +74,8 @@ export const confirmMockPayment = async (req, res, next) => {
         booking_id,
         amount,
         payment_status: 'SUCCESS',
-        payment_method: 'CARD',
+        payment_method: payment_method || 'CARD', 
         gateway: 'MOCK'
-        // transaction_id removed to prevent schema error
       })
       .select(`
         id,
@@ -122,12 +117,12 @@ export const confirmMockPayment = async (req, res, next) => {
 
 /**
  * GET /api/dashboard/payments
+ * (No changes needed here as you already select specific columns, assuming payment_method is in DB)
  */
 export const getUserPayments = async (req, res, next) => {
   try {
     const userId = req.user.id;
 
-    // 🔥 FIX #2: Explicitly select columns here too (Avoid SELECT *)
     const { data, error } = await supabase
       .from('payments')
       .select(`
