@@ -1,5 +1,6 @@
 import { Routes, Route, Navigate } from "react-router-dom";
 import Login from "./pages/Login";
+import Register from "./pages/Register"; // ✅ Imported Register
 import Dashboard from "./pages/Dashboard";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Bookings from "./pages/Bookings";
@@ -19,8 +20,9 @@ import AdminRefunds from "./pages/AdminRefunds";
 export default function App() {
   return (
     <Routes>
-      {/* 🔓 Public Route */}
+      {/* 🔓 Public Routes */}
       <Route path="/login" element={<Login />} />
+      <Route path="/register" element={<Register />} /> {/* ✅ Added Register Route */}
 
       {/* 🔐 PROTECTED ROUTES */}
       <Route element={<ProtectedRoute />}>
@@ -44,7 +46,6 @@ export default function App() {
         {/* 🛡️ Admin Routes */}
         <Route path="/admin" element={<AdminPanel />} />
         <Route path="/admin-users" element={<AdminUsers />} />
-        {/* ✅ Fixed: Moved Refund Route INSIDE protected block */}
         <Route path="/admin/refunds" element={<AdminRefunds />} />
       </Route>
 

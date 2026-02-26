@@ -18,14 +18,22 @@ import adminRoutes from "./routes/admin.routes.js";
 import adminAccommodationRoutes from "./routes/admin.accommodation.routes.js";
 import adminRefundRoutes from './routes/admin.refund.routes.js';
 
+// 🔐 NEW AUTH ROUTE
+import authRoutes from './routes/auth.routes.js';
+
 const app = express();
 
 app.use(cors());
 app.use(express.json());
 app.use(morgan('dev'));
 
-// Routes
+// Health
 app.use('/api', healthRoutes); 
+
+// 🔐 Auth
+app.use('/api/auth', authRoutes);
+
+// User Modules
 app.use('/api/entry-slots', entrySlotRoutes);
 app.use('/api/epass', epassRoutes);
 app.use('/api/food-slots', foodSlotRoutes);
@@ -42,6 +50,7 @@ app.use("/api/admin", adminRoutes);
 app.use("/api/admin/accommodations", adminAccommodationRoutes);
 app.use('/api/admin/refunds', adminRefundRoutes);
 
+// Global Error Handler
 app.use(errorHandler);
 
 export default app;

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom"; // ✅ Imported Link
 import { supabase } from "../api/supabase";
 
 export default function Login() {
@@ -29,7 +29,6 @@ export default function Login() {
     localStorage.setItem("email", userEmail);
 
     // ⭐ 3. SET ADMIN FLAG
-    // This allows the frontend to show Admin Panels immediately without waiting for an API check
     if (userEmail === "admin@test.com") {
       localStorage.setItem("isAdmin", "true");
     } else {
@@ -76,7 +75,15 @@ export default function Login() {
           </button>
         </div>
 
-        <p className="text-center text-gray-500 text-xs mt-8">
+        {/* ✅ Added Sign Up Link Here */}
+        <p className="text-center mt-6 text-sm text-gray-400">
+          Don't have an account?{" "}
+          <Link to="/register" className="text-green-500 hover:underline font-semibold">
+            Sign up
+          </Link>
+        </p>
+
+        <p className="text-center text-gray-500 text-xs mt-6 border-t border-slate-700 pt-4">
           Testing as admin? Use <span className="text-gray-300">admin@test.com</span>
         </p>
       </div>
