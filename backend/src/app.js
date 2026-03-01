@@ -17,7 +17,7 @@ import dashboardRoutes from './routes/dashboard.routes.js';
 import adminRoutes from "./routes/admin.routes.js";
 import adminAccommodationRoutes from "./routes/admin.accommodation.routes.js";
 import adminRefundRoutes from './routes/admin.refund.routes.js';
-
+import vazhipaduRoutes from "./routes/vazhipadu.routes.js";
 // 🔐 NEW AUTH ROUTE
 import authRoutes from './routes/auth.routes.js';
 
@@ -49,6 +49,8 @@ app.use('/api/dashboard', dashboardRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/admin/accommodations", adminAccommodationRoutes);
 app.use('/api/admin/refunds', adminRefundRoutes);
+app.use("/api/vazhipadu", vazhipaduRoutes);
+app.use('/api/vazhipadu', vazhipaduRoutes);
 
 // Global Error Handler
 app.use(errorHandler);
