@@ -5,18 +5,19 @@ import {
   getMyVazhipaduBookings,
   cancelVazhipaduBooking,
   verifyVazhipaduQR,
-  getAllVazhipaduServices, // ✅ FIX: Change this name
-  getVazhipaduAddons
+  getAllVazhipaduServices,
+  getVazhipaduAddons,
+  getYearlyCalendar // ✅ 1. Added the new calendar import
 } from "../controllers/vazhipadu.controller.js";
 import { requireAuth } from "../middlewares/auth.middleware.js";
 
 const router = express.Router();
 
 // 🔓 Public Routes
-// ✅ FIX: Change the handler name here too
 router.get("/services", getAllVazhipaduServices); 
 router.get("/addons", getVazhipaduAddons);
 router.post("/check-availability", checkAvailability);
+router.get("/calendar/:year", getYearlyCalendar); // ✅ 2. Registered the yearly calendar route
 
 // 🔐 Protected Routes
 router.post("/create-booking", requireAuth, createBooking);

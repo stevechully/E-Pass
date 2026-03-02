@@ -20,6 +20,7 @@ import adminRefundRoutes from './routes/admin.refund.routes.js';
 import vazhipaduRoutes from "./routes/vazhipadu.routes.js";
 // 🔐 NEW AUTH ROUTE
 import authRoutes from './routes/auth.routes.js';
+import calendarRoutes from './routes/calendar.routes.js';
 
 const app = express();
 
@@ -50,7 +51,9 @@ app.use("/api/admin", adminRoutes);
 app.use("/api/admin/accommodations", adminAccommodationRoutes);
 app.use('/api/admin/refunds', adminRefundRoutes);
 app.use("/api/vazhipadu", vazhipaduRoutes);
-app.use('/api/vazhipadu', vazhipaduRoutes);
+
+app.use('/api/calendar', calendarRoutes);
+
 
 // Global Error Handler
 app.use(errorHandler);

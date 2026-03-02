@@ -11,7 +11,8 @@ import {
   Users, 
   LogOut, 
   User,
-  Sparkles   // ✅ Added for Vazhipadu
+  Sparkles,
+  Calendar   // ✅ Added for Vazhipadu
 } from "lucide-react";
 
 export default function MainLayout({ children }) {
@@ -34,6 +35,7 @@ export default function MainLayout({ children }) {
     // 🔥 NEW — Vazhipadu Links
     { name: "Book Vazhipadu", path: "/vazhipadu", icon: Sparkles },
     { name: "My Vazhipadu", path: "/my-vazhipadu", icon: FolderOpen },
+    { name: "Pooja Calendar", path: "/calendar", icon: Calendar },    
 
     { name: "My E-Passes", path: "/my-epass", icon: FolderOpen },
     { name: "My Food", path: "/my-food", icon: Coffee },
