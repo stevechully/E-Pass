@@ -1,90 +1,88 @@
 import { useEffect, useState } from "react";
+import MainLayout from "../layouts/MainLayout";
+import { getAdminPendingRefunds, processAdminRefund } from '../services/refundService';
 
 export default function AdminRefunds() {
   const [refunds, setRefunds] = useState([]);
-  const token = localStorage.getItem("token");
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchRefunds();
+    loadRefunds();
   }, []);
 
-  async function fetchRefunds() {
+  const loadRefunds = async () => {
+    setLoading(true);
     try {
-      const res = await fetch("http://localhost:5000/api/admin/refunds", {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      const data = await res.json();
-      if (data.success) {
-        setRefunds(data.data || []); // Ensure fallback to array
-      }
+      const data = await getAdminPendingRefunds();
+      if (data.success) setRefunds(data.refunds);
     } catch (err) {
-      console.error("Error fetching refunds:", err);
+      console.error("Failed to load refunds:", err);
+    } finally {
+      setLoading(false);
     }
-  }
+  };
 
-  async function completeRefund(id) {
-    // 🔍 DEBUG LOG 1: Verify click
-    console.log("👉 CLICKED COMPLETE REFUND FOR ID:", id);
-
+  const handleAction = async (id, action) => {
+    if (!window.confirm(`Are you sure you want to ${action} this refund?`)) return;
+    
     try {
-      const res = await fetch(
-        `http://localhost:5000/api/admin/refunds/${id}/complete`,
-        {
-          method: "POST",
-          headers: { Authorization: `Bearer ${token}` }
-        }
-      );
-      
-      const data = await res.json();
-      
-      // 🔍 DEBUG LOG 2: Check server response
-      console.log("👉 SERVER RESPONSE:", data);
-
-      if (data.success) {
-        alert("Refund processed successfully ✅");
-        fetchRefunds(); // Refresh list
-      } else {
-        alert("Failed: " + (data.message || "Unknown error"));
-      }
+      await processAdminRefund(id, action);
+      alert(`Refund ${action.toLowerCase()}ed successfully!`);
+      loadRefunds(); // Refresh table
     } catch (err) {
-      console.error("❌ FETCH ERROR:", err);
-      alert("Network error connecting to server");
+      alert("Action failed. Check backend console.");
     }
-  }
+  };
 
   return (
-    <div className="p-8 text-white min-h-screen bg-slate-900">
-      <h1 className="text-3xl mb-6 font-bold">Pending Refunds</h1>
-
-      {refunds.length === 0 && <p className="text-gray-400">No pending refunds found.</p>}
-
-      <div className="grid gap-4">
-        {refunds.map(r => (
-          <div key={r.id} className="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-lg">
-            <div className="flex justify-between items-start mb-4">
-              <div>
-                <p className="text-gray-400 text-sm uppercase">Module</p>
-                <p className="font-bold text-lg text-blue-400">{r.module}</p>
-              </div>
-              <div className="text-right">
-                <p className="text-gray-400 text-sm uppercase">Amount</p>
-                <p className="font-bold text-xl text-green-400">₹{r.amount}</p>
-              </div>
-            </div>
-            
-            <p className="text-sm text-gray-400 mb-4">
-              Status: <span className="text-yellow-400 font-semibold">{r.refund_status}</span>
-            </p>
-
-            <button
-              onClick={() => completeRefund(r.id)}
-              className="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-3 px-4 rounded-lg transition-colors shadow-md active:scale-95"
-            >
-              Mark as Completed
-            </button>
+    <MainLayout>
+      <div className="p-8">
+        <h2 className="text-3xl font-bold mb-6 text-gray-800">Pending Refunds</h2>
+        
+        {loading ? (
+          <p className="text-gray-500">Loading requests...</p>
+        ) : refunds.length === 0 ? (
+          <p className="text-gray-500 bg-gray-50 p-6 rounded-xl border border-gray-100">No pending refunds found.</p>
+        ) : (
+          <div className="bg-white rounded-xl overflow-hidden border border-gray-200 shadow-sm">
+            <table className="w-full text-left">
+              <thead className="bg-gray-50 text-gray-600 text-sm uppercase">
+                <tr>
+                  <th className="p-4">Type</th>
+                  <th className="p-4">Amount</th>
+                  <th className="p-4">Reason</th>
+                  <th className="p-4">Date Requested</th>
+                  <th className="p-4 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {refunds.map((r) => (
+                  <tr key={r.id} className="hover:bg-gray-50">
+                    <td className="p-4 font-bold text-gray-700">{r.booking_type}</td>
+                    <td className="p-4 text-emerald-600 font-bold">₹{r.amount}</td>
+                    <td className="p-4 text-sm text-gray-500">{r.reason}</td>
+                    <td className="p-4 text-sm text-gray-500">{new Date(r.created_at).toLocaleDateString()}</td>
+                    <td className="p-4 flex justify-end gap-2">
+                      <button 
+                        onClick={() => handleAction(r.id, 'APPROVE')}
+                        className="bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded shadow-sm text-xs font-bold transition-all"
+                      >
+                        Approve
+                      </button>
+                      <button 
+                        onClick={() => handleAction(r.id, 'REJECT')}
+                        className="bg-rose-500 hover:bg-rose-600 text-white px-4 py-2 rounded shadow-sm text-xs font-bold transition-all"
+                      >
+                        Reject
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-        ))}
+        )}
       </div>
-    </div>
+    </MainLayout>
   );
 }

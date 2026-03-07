@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom"; // ✅ Step 1: Import useNavigate
+import { useNavigate } from "react-router-dom";
+import { cancelBooking, requestRefund } from '../services/refundService'; // ✅ Import new services
 
 export default function Bookings() {
   const [bookings, setBookings] = useState([]);
-  const navigate = useNavigate(); // ✅ Step 2: Initialize navigate
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetchBookings();
@@ -27,29 +28,31 @@ export default function Bookings() {
     }
   }
 
-  async function cancelBooking(id, module) {
-    if (!window.confirm("Are you sure you want to cancel this booking?")) return;
+  // ✅ Step 3: Updated Unified Cancel & Refund Handler
+  async function handleCancelAndRefund(booking) {
+    if (!window.confirm("Are you sure you want to cancel this booking and request a refund?")) return;
 
     try {
-      const token = localStorage.getItem("token");
-      const res = await fetch("http://localhost:5000/api/cancel", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          module,
-          booking_id: id,
-          reason_code: "USER_CANCELLED",
-        }),
+      // 1. Determine the correct type for the refund service mapping
+      // Mapping 'VAZHIPADU' module to 'POOJA' type for the refund table
+      const type = booking.module === 'VAZHIPADU' ? 'POOJA' : 'EPASS';
+      
+      // 2. Cancel the booking record
+      await cancelBooking(booking.id, type);
+      
+      // 3. Create the refund request in the master table
+      await requestRefund({
+        booking_id: booking.id,
+        booking_type: type,
+        amount: booking.meta?.total_amount || booking.meta?.eco_fee || 20,
+        reason: "User requested cancellation via dashboard"
       });
-
-      if (res.ok) {
-        fetchBookings(); // refresh the list
-      }
+      
+      alert("Booking cancelled and refund requested successfully! ✅");
+      fetchBookings(); // Refresh the list to show updated status
     } catch (err) {
-      console.error("Cancellation failed:", err);
+      console.error("Cancellation/Refund failed:", err);
+      alert(err.response?.data?.message || "Error processing cancellation.");
     }
   }
 
@@ -61,7 +64,6 @@ export default function Bookings() {
           <p className="text-gray-400 mt-1">Manage your e-passes, food, and stays.</p>
         </div>
         
-        {/* Navigation back to Dashboard */}
         <button 
           onClick={() => navigate("/dashboard")}
           className="text-gray-400 hover:text-white transition"
@@ -107,16 +109,16 @@ export default function Bookings() {
             </div>
 
             <div className="flex gap-3 w-full md:w-auto">
+              {/* ✅ Button updated to handle both Cancel and Refund */}
               {b.status !== "CANCELLED" && (
                 <button
-                  onClick={() => cancelBooking(b.id, b.module)}
-                  className="flex-1 md:flex-none border border-red-600/50 text-red-400 hover:bg-red-600 hover:text-white px-5 py-2 rounded-lg transition-colors text-sm font-semibold"
+                  onClick={() => handleCancelAndRefund(b)}
+                  className="flex-1 md:flex-none border border-orange-600/50 text-orange-400 hover:bg-orange-600 hover:text-white px-5 py-2 rounded-lg transition-colors text-sm font-semibold"
                 >
-                  Cancel
+                  Cancel & Refund
                 </button>
               )}
 
-              {/* ✅ Details Button: Now links to the dynamic detail page */}
               <button 
                 onClick={() => navigate(`/booking/${b.module}/${b.id}`)}
                 className="flex-1 md:flex-none bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg transition-all text-sm font-semibold shadow-md shadow-blue-900/20"

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { QRCodeCanvas } from "qrcode.react";
-import { jsPDF } from "jspdf"; // ✅ Ensure you've run 'npm install jspdf'
+import { jsPDF } from "jspdf";
+import { cancelBooking, requestRefund } from '../services/refundService'; // ✅ Added Refund Service
 
 export default function MyEpass() {
   const [passes, setPasses] = useState([]);
@@ -30,43 +31,44 @@ export default function MyEpass() {
     }
   }
 
-  // ✅ CANCEL PASS
-  async function cancelPass(id) {
-    const token = localStorage.getItem("token");
-    if (!confirm("Cancel this pass?")) return;
+  // ✅ UPDATED: CANCEL PASS + AUTOMATIC REFUND REQUEST
+  async function handleCancelAndRefund(pass) {
+    if (!confirm("Are you sure you want to cancel this pass and request a refund?")) return;
 
-    const res = await fetch(`http://localhost:5000/api/epass/cancel/${id}`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
+    try {
+      // 1. Mark the e-pass as CANCELLED in the DB
+      await cancelBooking(pass.id, 'EPASS');
 
-    const data = await res.json();
-    if (data.success) {
-      alert("Cancelled ✅");
-      fetchMyPasses();
-    } else {
-      alert(data.message || "Cancel failed");
+      // 2. Create the refund request in the master refund table
+      await requestRefund({
+        booking_id: pass.id,
+        booking_type: 'EPASS',
+        amount: 20, // E-pass eco fee is always 20
+        reason: "User requested cancellation from My E-Pass page"
+      });
+
+      alert("E-Pass cancelled and refund requested successfully! ✅");
+      fetchMyPasses(); // Refresh the list
+    } catch (err) {
+      console.error(err);
+      alert(err.response?.data?.message || "Error processing cancellation.");
     }
   }
 
-  // ✅ UPDATED: DOWNLOAD ACTUAL PDF
+  // ✅ PDF GENERATION LOGIC
   function downloadPDF(pass) {
     const doc = new jsPDF();
 
-    // 1. Header
     doc.setFontSize(22);
     doc.setTextColor(40);
     doc.text("OFFICIAL E-PASS", 105, 20, { align: "center" });
 
-    // 2. Pass Details
     doc.setFontSize(12);
     doc.setTextColor(100);
     doc.text(`Generated on: ${new Date().toLocaleString()}`, 20, 30);
     
     doc.setLineWidth(0.5);
-    doc.line(20, 35, 190, 35); // Horizontal line
+    doc.line(20, 35, 190, 35);
 
     doc.setFontSize(14);
     doc.setTextColor(0);
@@ -79,20 +81,17 @@ export default function MyEpass() {
     doc.text(`Time Slot: ${pass.entry_slots?.start_time} - ${pass.entry_slots?.end_time}`, 20, 70);
     doc.text(`Current Status: ${pass.status}`, 20, 80);
 
-    // 3. QR Code Reference
     doc.setFont("helvetica", "bold");
     doc.text("SECURITY CODE:", 20, 100);
     doc.setFont("courier", "bold");
     doc.setFontSize(16);
     doc.text(pass.qr_code, 20, 110);
 
-    // 4. Footer Note
     doc.setFont("helvetica", "italic");
     doc.setFontSize(10);
     doc.setTextColor(150);
     doc.text("Please present this pass at the gate for entry.", 105, 140, { align: "center" });
 
-    // 5. Save the file
     doc.save(`EPass-${pass.qr_code}.pdf`);
   }
 
@@ -128,7 +127,6 @@ export default function MyEpass() {
                 </div>
               </div>
 
-              {/* ✅ VISUAL QR CODE DISPLAY */}
               <div className="mt-4 p-6 bg-white rounded-xl flex flex-col items-center justify-center">
                 <QRCodeCanvas 
                   value={pass.qr_code} 
@@ -141,14 +139,14 @@ export default function MyEpass() {
                 </p>
               </div>
 
-              {/* ACTION BUTTONS */}
               <div className="flex gap-4 mt-6">
+                {/* ✅ Button logic checks if NOT cancelled yet */}
                 {pass.status === "BOOKED" && (
                   <button
-                    onClick={() => cancelPass(pass.id)}
+                    onClick={() => handleCancelAndRefund(pass)}
                     className="flex-1 bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg font-medium transition"
                   >
-                    Cancel
+                    Cancel & Refund
                   </button>
                 )}
                 <button
