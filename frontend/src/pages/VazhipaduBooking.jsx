@@ -4,7 +4,7 @@ import { checkAvailability, getAddons } from "../services/vazhipaduService";
 import { getSpecialPoojaDates } from "../services/calendarService";
 import axios from "axios";
 import PaymentModal from "../components/PaymentModal";
-import { Calendar as CalendarIcon, CheckCircle, AlertCircle, ArrowLeft, ArrowRight, ShieldCheck } from "lucide-react";
+import { Calendar as CalendarIcon, CheckCircle, AlertCircle, ArrowLeft, ArrowRight, ShieldCheck, Info } from "lucide-react";
 
 const API = import.meta.env.VITE_API_URL;
 
