@@ -1,9 +1,18 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import PaymentModal from "../components/PaymentModal"; // Adjust path if needed
 
 export default function EpassBooking() {
   const [slots, setSlots] = useState([]);
   const [loading, setLoading] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState(null);
+  
+  // New states for payment flow
+  const [showPayment, setShowPayment] = useState(false);
+  const [pendingBookingId, setPendingBookingId] = useState(null);
+  const [selectedDate, setSelectedDate] = useState("");
+
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetchSlots();
@@ -13,8 +22,6 @@ export default function EpassBooking() {
     try {
       const res = await fetch("http://localhost:5000/api/entry-slots");
       const data = await res.json();
-
-      console.log("Slots API:", data);
 
       if (Array.isArray(data)) {
         setSlots(data);
@@ -30,10 +37,10 @@ export default function EpassBooking() {
     }
   }
 
-  async function bookSlot() {
+  // STEP 1: Initiate Booking (Creates PENDING record)
+  async function initiateBooking() {
     if (!selectedSlot) return alert("Select a slot first");
 
-    // ⭐ Find the currently selected slot to check remaining capacity
     const slotToBook = slots.find(s => s.id === selectedSlot);
     const remaining = (slotToBook.max_capacity || slotToBook.capacity || 0) - (slotToBook.booked_count || 0);
 
@@ -45,30 +52,60 @@ export default function EpassBooking() {
     setLoading(true);
 
     try {
-      const res = await fetch(
-        "http://localhost:5000/api/epass/book",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ slot_id: selectedSlot }),
-        }
-      );
+      const res = await fetch("http://localhost:5000/api/epass/create-booking", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ slot_id: selectedSlot }),
+      });
 
       const data = await res.json();
 
       if (data.success) {
-        alert("E-Pass booked successfully ✅");
-        setSelectedSlot(null);
-        fetchSlots(); // Refresh capacity after a successful booking
+        // Save pending booking info and open Payment Modal
+        setPendingBookingId(data.booking.id);
+        setSelectedDate(slotToBook.slot_date);
+        setShowPayment(true);
       } else {
-        alert(data.message || "Booking failed");
+        alert(data.message || "Failed to initiate booking");
       }
     } catch (err) {
-      console.error("Booking error:", err);
-      alert("Booking error");
+      console.error("Booking init error:", err);
+      alert("Error initiating booking");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // STEP 2: Confirm Payment (Generates QR and marks PAID)
+  async function handlePaymentSuccess() {
+    const token = localStorage.getItem("token");
+    setLoading(true);
+    setShowPayment(false);
+
+    try {
+      const res = await fetch("http://localhost:5000/api/epass/confirm-payment", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ booking_id: pendingBookingId }),
+      });
+
+      const data = await res.json();
+
+      if (data.success) {
+        // Redirect to success page to show QR Code
+        navigate(`/epass/success/${pendingBookingId}`);
+      } else {
+        alert(data.message || "Payment confirmation failed.");
+      }
+    } catch (err) {
+      console.error("Payment confirmation error:", err);
+      alert("Something went wrong verifying your payment.");
     } finally {
       setLoading(false);
     }
@@ -84,8 +121,6 @@ export default function EpassBooking() {
         <>
           <div className="grid gap-4 max-w-2xl">
             {slots.map((slot) => {
-              // ⭐ Step 1: Compute remaining capacity correctly
-              // (Checking for both 'capacity' and 'max_capacity' depending on your DB column name)
               const remaining = (slot.max_capacity || slot.capacity || 0) - (slot.booked_count || 0);
               const isFull = remaining <= 0;
 
@@ -104,6 +139,9 @@ export default function EpassBooking() {
                   <p className="text-blue-400 font-semibold">
                     {new Date(slot.slot_date).toLocaleDateString("en-IN", {
                       weekday: "long",
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric'
                     })}
                   </p>
 
@@ -130,19 +168,34 @@ export default function EpassBooking() {
             })}
           </div>
 
-          {/* Confirm Button */}
           <button
             disabled={!selectedSlot || loading}
-            onClick={bookSlot}
+            onClick={initiateBooking}
             className={`mt-6 px-6 py-3 rounded-lg font-bold transition-all shadow-lg 
               ${!selectedSlot || loading 
                 ? "bg-gray-700 text-gray-500 cursor-not-allowed" 
                 : "bg-blue-600 hover:bg-blue-500 active:scale-95 text-white"
               }`}
           >
-            {loading ? "Processing..." : "Confirm Booking"}
+            {loading ? "Processing..." : "Pay ₹20 Eco Fee & Book"}
           </button>
         </>
+      )}
+
+      {/* Render Payment Modal */}
+      {showPayment && (
+        <PaymentModal
+          isOpen={showPayment}
+          onClose={() => setShowPayment(false)}
+          puja={{ puja_name: "Temple Eco Fee (e-Pass)" }} 
+          bookingDate={selectedDate}
+          selectedAddons={[]}
+          ecoFee={20}
+          totalAmount={20}
+          isEpass={true}                // ✅ ADDED: Tells modal to skip Vazhipadu validation
+          bookingId={pendingBookingId}  // ✅ ADDED: Passes the already-created ID
+          onSuccess={handlePaymentSuccess}
+        />
       )}
     </div>
   );

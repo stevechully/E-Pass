@@ -32,6 +32,8 @@ import AdminPanel from "./pages/AdminPanel";
 import AdminUsers from "./pages/AdminUsers";
 import AdminRefunds from "./pages/AdminRefunds";
 
+import EpassSuccess from './pages/EpassSuccess';
+
 export default function App() {
   return (
     <Routes>
@@ -51,6 +53,7 @@ export default function App() {
         <Route path="/my-epass" element={<MyEpass />} />
         <Route path="/food" element={<FoodBooking />} />
         <Route path="/my-food" element={<MyFoodBookings />} />
+        <Route path="/epass/success/:id" element={<EpassSuccess />} />
 
         {/* Accommodation */}
         <Route path="/accommodation" element={<AccommodationBooking />} />

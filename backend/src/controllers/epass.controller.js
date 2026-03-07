@@ -2,7 +2,8 @@ import { supabase } from '../config/supabase.js';
 import crypto from 'crypto';
 
 /**
- * POST /api/epass/book
+ * POST /api/epass/create-booking
+ * Step 1: Create pending booking (NO QR CODE YET)
  */
 export const createEpassBooking = async (req, res, next) => {
   try {
@@ -31,18 +32,19 @@ export const createEpassBooking = async (req, res, next) => {
       });
     }
 
-    // Generate QR code
-    const qrCode = `EPASS-${crypto.randomBytes(6).toString('hex').toUpperCase()}`;
+    const ECO_FEE = 20;
 
-    // Insert booking (DB trigger enforces capacity)
+    // Insert booking as PENDING without generating the QR yet
     const { data: booking, error } = await supabase
       .from('epass_bookings')
       .insert({
         user_id: userId,
         slot_id,
         visit_date: slot.slot_date,
-        status: 'BOOKED',
-        qr_code: qrCode
+        status: 'PENDING', // Wait for payment to mark as BOOKED
+        payment_status: 'PENDING',
+        eco_fee: ECO_FEE,
+        total_amount: ECO_FEE
       })
       .select()
       .single();
@@ -50,6 +52,51 @@ export const createEpassBooking = async (req, res, next) => {
     if (error) throw error;
 
     res.status(201).json({
+      success: true,
+      booking
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+/**
+ * POST /api/epass/confirm-payment
+ * Step 2: Confirm payment and Generate QR
+ */
+export const confirmEpassPayment = async (req, res, next) => {
+  try {
+    const { booking_id } = req.body;
+    const userId = req.user.id;
+
+    if (!booking_id) {
+      return res.status(400).json({ success: false, message: 'booking_id is required' });
+    }
+
+    // Generate QR code ONLY after payment is confirmed
+    const qrCode = `EPASS-${crypto.randomBytes(6).toString('hex').toUpperCase()}`;
+
+    // Update status to PAID and assign the QR code
+    const { data: booking, error } = await supabase
+      .from('epass_bookings')
+      .update({ 
+        payment_status: 'PAID',
+        status: 'BOOKED',
+        qr_code: qrCode 
+      })
+      .eq('id', booking_id)
+      .eq('user_id', userId) // Security check: Ensure user owns this pass
+      .select()
+      .single();
+
+    if (error || !booking) {
+      return res.status(400).json({
+        success: false,
+        message: 'Failed to confirm payment or booking not found'
+      });
+    }
+
+    res.json({
       success: true,
       booking
     });
@@ -72,6 +119,7 @@ export const getMyEpassBookings = async (req, res, next) => {
         visit_date,
         status,
         qr_code,
+        payment_status,
         entry_slots (
           start_time,
           end_time

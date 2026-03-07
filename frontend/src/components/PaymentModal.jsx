@@ -11,6 +11,8 @@ export default function PaymentModal({
   selectedAddons,
   ecoFee,
   totalAmount,
+  bookingId, // Added for E-pass
+  isEpass,   // Added flag to trigger the exception
   onSuccess
 }) {
   const [loading, setLoading] = useState(false);
@@ -33,41 +35,46 @@ export default function PaymentModal({
 
       // 🔍 DEBUG LOG
       console.log("👉 SENDING TO SECURE BACKEND:", {
+        is_epass: isEpass,
         puja_id: puja?.id,
         booking_date: bookingDate,
         selected_addons: selectedAddons,
         eco_fee: ecoFee,
-        total_amount: totalAmount
+        total_amount: totalAmount,
+        existing_booking_id: bookingId
       });
 
-      if (!puja?.id || !bookingDate) {
+      // ✅ EXCEPTION: Only strictly validate puja.id if it is NOT an e-pass
+      if (!isEpass && (!puja?.id || !bookingDate)) {
         alert("Selection Error: Please ensure a date is selected.");
         setLoading(false);
         return; 
       }
 
-      // 1️⃣ Create Booking
-      const bookingRes = await axios.post(
-        `${API}/vazhipadu/create-booking`,
-        {
-          puja_id: puja.id,
-          booking_date: bookingDate,
-          selected_addons: selectedAddons,
-          eco_fee: ecoFee,
-          total_amount: totalAmount
-        },
-        authHeader
-      );
+      let finalBookingId = bookingId;
 
-      const bookingId = bookingRes.data.booking_id;
+      // 1️⃣ Create Booking (ONLY for Vazhipadu, skip for E-Pass)
+      if (!isEpass) {
+        const bookingRes = await axios.post(
+          `${API}/vazhipadu/create-booking`,
+          {
+            puja_id: puja.id,
+            booking_date: bookingDate,
+            selected_addons: selectedAddons,
+            eco_fee: ecoFee,
+            total_amount: totalAmount
+          },
+          authHeader
+        );
+        finalBookingId = bookingRes.data.booking_id;
+      }
 
-      // 2️⃣ Confirm Mock Payment
-      // ✅ FIX: Changed "MOCK" to "CARD" to satisfy the DB constraint
+      // 2️⃣ Confirm Payment via central payments route
       await axios.post(
         `${API}/payments/confirm`,
         {
-          module: "VAZHIPADU",
-          booking_id: bookingId,
+          module: isEpass ? "EPASS" : "VAZHIPADU",
+          booking_id: finalBookingId,
           amount: totalAmount,
           payment_method: "CARD" 
         },
@@ -75,10 +82,10 @@ export default function PaymentModal({
       );
 
       // ✅ Success callback to redirect user
-      onSuccess(bookingId);
+      onSuccess(finalBookingId);
 
     } catch (err) {
-      console.error("PAYMENT FLOW ERROR:", err.response?.data);
+      console.error("PAYMENT FLOW ERROR:", err.response?.data || err);
       alert(err.response?.data?.message || "Payment processing failed.");
     } finally {
       setLoading(false);
