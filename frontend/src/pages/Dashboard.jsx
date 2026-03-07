@@ -39,7 +39,7 @@ export default function Dashboard() {
       
       if (json.success) {
         setStats(json.data);
-        setIsAdmin(localStorage.getItem("isAdmin") === "true"); 
+        setIsAdmin(json.is_admin); // Safely use the boolean straight from the backend response
       }
     } catch (err) {
       console.error("Fetch error:", err);
@@ -54,7 +54,7 @@ export default function Dashboard() {
       <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
         <div>
           <h1 className="text-3xl font-bold text-gray-800">Dashboard Overview</h1>
-          <p className="text-gray-500 mt-1 flex items-center gap-2">
+          <div className="text-gray-500 mt-1 flex items-center gap-2">
             {isAdmin ? (
               <span className="flex items-center gap-2 text-emerald-600 font-medium">
                 <Shield className="w-4 h-4" /> Admin Access Granted
@@ -62,7 +62,7 @@ export default function Dashboard() {
             ) : (
               "Welcome back! Here is what's happening today."
             )}
-          </p>
+          </div>
         </div>
         
         <div className="flex gap-3">
@@ -88,9 +88,9 @@ export default function Dashboard() {
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
         <Card title="Total Bookings" value={stats.total_bookings} color="bg-blue-600" icon={<Calendar className="w-6 h-6" />} />
         <Card title="Active Bookings" value={stats.active_bookings} color="bg-green-600" icon={<CheckCircle className="w-6 h-6" />} />
-        <Card title="Cancelled" value={stats.cancelled_bookings} color="bg-red-600" icon={<XCircle className="w-6 h-6" />} />
-        <Card title="Total Paid" value={`₹${stats.total_paid?.toLocaleString()}`} color="bg-purple-600" icon={<Banknote className="w-6 h-6" />} />
-        <Card title="Refunded" value={`₹${stats.total_refunded?.toLocaleString()}`} color="bg-orange-500" icon={<RefreshCcw className="w-6 h-6" />} />
+        <Card title="Cancelled Bookings" value={stats.cancelled_bookings} color="bg-red-600" icon={<XCircle className="w-6 h-6" />} />
+        <Card title="Total Paid" value={`₹${(stats.total_paid || 0).toLocaleString()}`} color="bg-purple-600" icon={<Banknote className="w-6 h-6" />} />
+        <Card title="Refunded" value={`₹${(stats.total_refunded || 0).toLocaleString()}`} color="bg-orange-500" icon={<RefreshCcw className="w-6 h-6" />} />
         <Card title="Eco Fee Status" value={stats.ecoFeePaid ? "Verified" : "Pending"} color="bg-emerald-600" icon={<Leaf className="w-6 h-6" />} />
       </div>
 
@@ -141,7 +141,6 @@ export default function Dashboard() {
                 View & process pending refunds
               </span>
             </button>
-
           </div>
         </div>
       )}
@@ -164,7 +163,7 @@ export default function Dashboard() {
               <p className="text-gray-400 mt-2 text-sm uppercase tracking-wider">Confirmed Schedule</p>
             </div>
           ) : (
-            <p className="text-gray-400 italic">No visits scheduled at the moment.</p>
+            <p className="text-gray-400 italic">No visits or poojas scheduled at the moment.</p>
           )}
         </div>
 
@@ -184,10 +183,7 @@ export default function Dashboard() {
  */
 function Card({ title, value, color, icon }) {
   return (
-    <div className="bg-white
-                    rounded-2xl shadow-sm p-6 
-                    hover:shadow-xl hover:-translate-y-1 
-                    transition duration-300 border border-gray-100 group">
+    <div className="bg-white rounded-2xl shadow-sm p-6 hover:shadow-xl hover:-translate-y-1 transition duration-300 border border-gray-100 group">
       <div className={`w-14 h-14 ${color} rounded-xl flex items-center justify-center text-white mb-5 shadow-lg group-hover:scale-105 transition duration-300`}>
         {icon}
       </div>

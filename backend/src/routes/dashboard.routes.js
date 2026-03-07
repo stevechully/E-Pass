@@ -20,7 +20,7 @@ router.get('/overview', getDashboardOverview);
 
 /**
  * GET /api/dashboard/bookings
- * Fetches a combined list of all module bookings (EPASS, FOOD, ACCOMMODATION)
+ * Fetches a combined list of all module bookings (EPASS, FOOD, ACCOMMODATION, VAZHIPADU)
  */
 router.get('/bookings', getAllBookings);
 

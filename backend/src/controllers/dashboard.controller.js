@@ -1,44 +1,48 @@
 import { supabase } from '../config/supabase.js';
 
+// ✅ Added VAZHIPADU to module tables so it shows up in "All Bookings"
 const MODULE_TABLES = {
   EPASS: 'epass_bookings',
   FOOD: 'food_bookings',
-  ACCOMMODATION: 'accommodation_bookings'
+  ACCOMMODATION: 'accommodation_bookings',
+  VAZHIPADU: 'vazhipadu_bookings' 
 };
 
-// Define your admin list here (or move to a config file)
 const ADMIN_EMAILS = ["admin@test.com", "steve@hellfire.com"];
 
 /**
  * GET /api/dashboard/overview
- * Merged with stats for bookings, eco-fees, upcoming visits, and admin check
  */
 export const getDashboardOverview = async (req, res, next) => {
   try {
     const userId = req.user.id;
     const userEmail = req.user.email;
 
-    // ⭐ Check if current user is an admin
     const isAdmin = ADMIN_EMAILS.includes(userEmail);
 
-    // 1. Fetch Epass bookings specifically for "Stats" and "Upcoming Visit"
+    // 1. Fetch Epass bookings
     const { data: epassBookings } = await supabase
       .from('epass_bookings')
-      .select('visit_date, status, amount')
+      .select('visit_date, status')
       .eq('user_id', userId);
 
-    // 2. Fetch Eco-fee status
+    // 2. Fetch Pooja (Vazhipadu) bookings
+    const { data: poojaBookings } = await supabase
+      .from('vazhipadu_bookings')
+      .select('booking_date, status')
+      .eq('user_id', userId);
+
+    // 3. Fetch Eco-fee status
     const { data: eco } = await supabase
       .from('eco_declarations')
       .select('id')
       .eq('user_id', userId);
 
-    // 3. Fetch Payments & Refunds for financial stats
+    // 4. Fetch Payments & Refunds
     const { data: payments } = await supabase
       .from('payments')
-      .select('amount')
-      .eq('user_id', userId)
-      .eq('payment_status', 'SUCCESS');
+      .select('amount, payment_status')
+      .eq('user_id', userId);
 
     const { data: refunds } = await supabase
       .from('refunds')
@@ -46,32 +50,46 @@ export const getDashboardOverview = async (req, res, next) => {
       .eq('user_id', userId)
       .eq('refund_status', 'SUCCESS');
 
-    // Logic for Stats
-    const totalBookingsCount = epassBookings?.length || 0;
-    const cancelledCount = epassBookings?.filter(b => b.status === 'CANCELLED').length || 0;
-    
-    // Logic for Upcoming Visit (gets the first upcoming date that is not cancelled)
-    const upcomingVisit = epassBookings
-      ?.filter(b => b.status !== 'CANCELLED' && new Date(b.visit_date) >= new Date())
-      .sort((a, b) => new Date(a.visit_date) - new Date(b.visit_date))[0]?.visit_date || null;
+    // Aggregate Bookings (Pooja + Epass)
+    const epassList = epassBookings || [];
+    const poojaList = poojaBookings || [];
 
-    const totalPaid = payments?.reduce((sum, p) => sum + Number(p.amount), 0) || 0;
+    const totalBookingsCount = epassList.length + poojaList.length;
+    
+    const cancelledEpass = epassList.filter(b => b.status === 'CANCELLED').length;
+    const cancelledPooja = poojaList.filter(b => b.status === 'CANCELLED').length;
+    const cancelledCount = cancelledEpass + cancelledPooja;
+    
+    // Logic for Upcoming Visit (Finds the closest future date from BOTH epass and poojas)
+    const upcomingEpassDates = epassList
+      .filter(b => b.status !== 'CANCELLED' && new Date(b.visit_date) >= new Date())
+      .map(b => b.visit_date);
+      
+    const upcomingPoojaDates = poojaList
+      .filter(b => b.status !== 'CANCELLED' && new Date(b.booking_date) >= new Date())
+      .map(b => b.booking_date);
+
+    const allUpcomingDates = [...upcomingEpassDates, ...upcomingPoojaDates]
+      .sort((a, b) => new Date(a) - new Date(b));
+      
+    const upcomingVisit = allUpcomingDates[0] || null;
+
+    // Financials (handles both SUCCESS and PAID statuses based on your various modules)
+    const totalPaid = payments
+      ?.filter(p => ['SUCCESS', 'PAID'].includes(p.payment_status))
+      .reduce((sum, p) => sum + Number(p.amount), 0) || 0;
+      
     const totalRefunded = refunds?.reduce((sum, r) => sum + Number(r.amount), 0) || 0;
 
     res.json({
       success: true,
-      is_admin: isAdmin, // ⭐ NEW: Tells frontend if user has admin rights
+      is_admin: isAdmin,
       data: {
-        // Financials
         total_paid: totalPaid,
         total_refunded: totalRefunded,
-        
-        // Detailed Booking Stats
         total_bookings: totalBookingsCount,
         cancelled_bookings: cancelledCount,
         active_bookings: totalBookingsCount - cancelledCount,
-        
-        // New Features
         upcomingVisit: upcomingVisit,
         ecoFeePaid: (eco && eco.length > 0) ? true : false
       }
@@ -109,10 +127,7 @@ export const getAllBookings = async (req, res, next) => {
       }
     }
 
-    res.json({
-      success: true,
-      data: results
-    });
+    res.json({ success: true, data: results });
   } catch (err) {
     next(err);
   }
@@ -128,25 +143,13 @@ export const getPaymentsAndRefunds = async (req, res, next) => {
     const { data } = await supabase
       .from('payments')
       .select(`
-        id,
-        module,
-        booking_id,
-        amount,
-        payment_status,
-        refunds (
-          id,
-          amount,
-          refund_status,
-          processed_at
-        )
+        id, module, booking_id, amount, payment_status,
+        refunds ( id, amount, refund_status, processed_at )
       `)
       .eq('user_id', userId)
       .order('created_at', { ascending: false });
 
-    res.json({
-      success: true,
-      data
-    });
+    res.json({ success: true, data });
   } catch (err) {
     next(err);
   }
@@ -161,10 +164,7 @@ export const getBookingDetails = async (req, res, next) => {
     const { module, id } = req.params;
 
     if (!MODULE_TABLES[module]) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid module'
-      });
+      return res.status(400).json({ success: false, message: 'Invalid module' });
     }
 
     const table = MODULE_TABLES[module];
@@ -177,10 +177,7 @@ export const getBookingDetails = async (req, res, next) => {
       .single();
 
     if (error || !booking) {
-      return res.status(404).json({
-        success: false,
-        message: 'Booking not found'
-      });
+      return res.status(404).json({ success: false, message: 'Booking not found' });
     }
 
     const { data: payment } = await supabase
@@ -191,33 +188,18 @@ export const getBookingDetails = async (req, res, next) => {
       .single();
 
     const { data: refund } = payment
-      ? await supabase
-          .from('refunds')
-          .select('*')
-          .eq('booking_id', id)
-          .single()
+      ? await supabase.from('refunds').select('*').eq('booking_id', id).single()
       : { data: null };
 
     const { data: cancellation } = await supabase
       .from('cancellations')
-      .select(`
-        created_at,
-        cancellation_reasons (
-          reason_code,
-          description
-        )
-      `)
+      .select(`created_at, cancellation_reasons ( reason_code, description )`)
       .eq('booking_id', id)
       .single();
 
     res.json({
       success: true,
-      data: {
-        booking,
-        payment: payment || null,
-        refund: refund || null,
-        cancellation: cancellation || null
-      }
+      data: { booking, payment: payment || null, refund: refund || null, cancellation: cancellation || null }
     });
   } catch (err) {
     next(err);
