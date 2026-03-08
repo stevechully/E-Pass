@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { QRCodeCanvas } from "qrcode.react";
 import { jsPDF } from "jspdf";
-import { cancelBooking, requestRefund } from '../services/refundService'; // ✅ Added Refund Service
+import { cancelBooking, requestRefund } from "../services/refundService";
+import { Calendar, Clock, Ticket, Download, Trash2, ShieldCheck } from "lucide-react";
 
 export default function MyEpass() {
   const [passes, setPasses] = useState([]);
@@ -15,151 +16,146 @@ export default function MyEpass() {
     const token = localStorage.getItem("token");
     try {
       const res = await fetch("http://localhost:5000/api/epass/my", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { Authorization: `Bearer ${token}` },
       });
-
       const data = await res.json();
       if (data.success) {
         setPasses(data.bookings);
       }
     } catch (err) {
-      alert("Failed to load passes");
+      console.error("Fetch error:", err);
     } finally {
       setLoading(false);
     }
   }
 
-  // ✅ UPDATED: CANCEL PASS + AUTOMATIC REFUND REQUEST
   async function handleCancelAndRefund(pass) {
-    if (!confirm("Are you sure you want to cancel this pass and request a refund?")) return;
+    if (!confirm("Are you sure you want to cancel this pass and request a refund?"))
+      return;
 
     try {
-      // 1. Mark the e-pass as CANCELLED in the DB
-      await cancelBooking(pass.id, 'EPASS');
-
-      // 2. Create the refund request in the master refund table
+      await cancelBooking(pass.id, "EPASS");
       await requestRefund({
         booking_id: pass.id,
-        booking_type: 'EPASS',
-        amount: 20, // E-pass eco fee is always 20
-        reason: "User requested cancellation from My E-Pass page"
+        booking_type: "EPASS",
+        amount: 20,
+        reason: "User requested cancellation from My E-Pass page",
       });
-
       alert("E-Pass cancelled and refund requested successfully! ✅");
-      fetchMyPasses(); // Refresh the list
+      fetchMyPasses();
     } catch (err) {
-      console.error(err);
       alert(err.response?.data?.message || "Error processing cancellation.");
     }
   }
 
-  // ✅ PDF GENERATION LOGIC
   function downloadPDF(pass) {
     const doc = new jsPDF();
-
     doc.setFontSize(22);
-    doc.setTextColor(40);
-    doc.text("OFFICIAL E-PASS", 105, 20, { align: "center" });
-
-    doc.setFontSize(12);
-    doc.setTextColor(100);
-    doc.text(`Generated on: ${new Date().toLocaleString()}`, 20, 30);
-    
-    doc.setLineWidth(0.5);
-    doc.line(20, 35, 190, 35);
-
-    doc.setFontSize(14);
-    doc.setTextColor(0);
-    doc.setFont("helvetica", "bold");
-    doc.text("VISIT INFORMATION", 20, 50);
-
-    doc.setFont("helvetica", "normal");
+    doc.text("OFFICIAL TEMPLE E-PASS", 105, 20, { align: "center" });
     doc.setFontSize(12);
     doc.text(`Visit Date: ${new Date(pass.visit_date).toDateString()}`, 20, 60);
     doc.text(`Time Slot: ${pass.entry_slots?.start_time} - ${pass.entry_slots?.end_time}`, 20, 70);
-    doc.text(`Current Status: ${pass.status}`, 20, 80);
-
-    doc.setFont("helvetica", "bold");
-    doc.text("SECURITY CODE:", 20, 100);
-    doc.setFont("courier", "bold");
-    doc.setFontSize(16);
-    doc.text(pass.qr_code, 20, 110);
-
-    doc.setFont("helvetica", "italic");
-    doc.setFontSize(10);
-    doc.setTextColor(150);
-    doc.text("Please present this pass at the gate for entry.", 105, 140, { align: "center" });
-
+    doc.text(`Security Code: ${pass.qr_code}`, 20, 100);
     doc.save(`EPass-${pass.qr_code}.pdf`);
   }
 
-  if (loading) return <p className="p-8 text-white">Loading...</p>;
+  if (loading)
+    return (
+      <div className="flex items-center justify-center p-20">
+        <div className="animate-spin h-10 w-10 border-b-2 border-orange-600 rounded-full"></div>
+      </div>
+    );
 
   return (
-    <div className="min-h-screen bg-slate-900 text-white p-8">
-      <h1 className="text-3xl font-bold mb-6">My E-Passes</h1>
+    /* ✅ Fix 1: Removed min-h-screen and bg-slate-900 to inherit Layout background */
+    <div className="text-slate-800 flex justify-center px-6 py-10 animate-in fade-in duration-500">
+      <div className="w-full max-w-3xl">
 
-      {passes.length === 0 ? (
-        <p className="text-gray-400">No bookings yet</p>
-      ) : (
-        <div className="grid gap-6 max-w-2xl">
-          {passes.map((pass) => (
-            <div
-              key={pass.id}
-              className="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-lg"
-            >
-              <div className="flex justify-between items-start mb-4">
-                <div>
-                  <p className="text-blue-400 font-semibold text-lg">
-                    {new Date(pass.visit_date).toDateString()}
-                  </p>
-                  <p className="text-gray-300">
-                    Time: {pass.entry_slots?.start_time} - {pass.entry_slots?.end_time}
-                  </p>
-                  <p className="mt-1">
-                    Status:{" "}
-                    <span className={pass.status === "BOOKED" ? "text-green-400" : "text-red-400"}>
-                      {pass.status}
-                    </span>
+        {/* Header */}
+        <div className="mb-10 text-center">
+          <h1 className="text-4xl font-heading font-bold text-slate-800 mb-2">
+            My E-Passes
+          </h1>
+          <p className="text-slate-500 font-medium">
+            View your booked temple passes, download them, or request a refund.
+          </p>
+        </div>
+
+        {passes.length === 0 ? (
+          <div className="bg-white p-12 rounded-3xl border border-gold/10 text-center shadow-sm">
+            <Ticket className="mx-auto text-slate-200 mb-4" size={48} />
+            <p className="text-slate-500 font-heading text-lg">You have not booked any E-Passes yet.</p>
+          </div>
+        ) : (
+          <div className="space-y-8">
+            {passes.map((pass) => (
+              /* ✅ Fix 2: Changed to bg-white with gold border for Temple Theme */
+              <div
+                key={pass.id}
+                className="bg-white border border-amber-100 rounded-[2rem] p-8 shadow-xl relative overflow-hidden"
+              >
+                {/* Status Badge */}
+                <div className="absolute top-6 right-8">
+                   <span className={`px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-widest ${
+                      pass.status === "BOOKED" ? "bg-emerald-50 text-emerald-600" : "bg-rose-50 text-rose-600"
+                   }`}>
+                     {pass.status}
+                   </span>
+                </div>
+
+                {/* Pass Info */}
+                <div className="flex items-start gap-4 mb-8">
+                  <div className="p-3 bg-orange-50 rounded-2xl text-orange-600">
+                    <Calendar size={24} />
+                  </div>
+                  <div>
+                    <p className="text-xl font-heading font-bold text-slate-800">
+                      {new Date(pass.visit_date).toLocaleDateString("en-IN", {
+                        weekday: "long", day: "numeric", month: "long", year: "numeric",
+                      })}
+                    </p>
+                    <p className="text-slate-500 font-bold flex items-center gap-2 mt-1">
+                      <Clock size={16} /> {pass.entry_slots?.start_time} - {pass.entry_slots?.end_time}
+                    </p>
+                  </div>
+                </div>
+
+                {/* ✅ Fix 3: QR Code Centered with max-width */}
+                <div className="mt-4 p-8 bg-slate-50 rounded-3xl flex flex-col items-center max-w-sm mx-auto border border-slate-100 shadow-inner">
+                  <QRCodeCanvas
+                    value={pass.qr_code}
+                    size={180}
+                    level={"H"}
+                    includeMargin={true}
+                  />
+                  <p className="text-slate-400 text-xs font-mono mt-4 uppercase tracking-[0.2em]">
+                    {pass.qr_code}
                   </p>
                 </div>
-              </div>
 
-              <div className="mt-4 p-6 bg-white rounded-xl flex flex-col items-center justify-center">
-                <QRCodeCanvas 
-                  value={pass.qr_code} 
-                  size={180} 
-                  level={"H"} 
-                  includeMargin={true}
-                />
-                <p className="text-black text-sm font-mono mt-3 opacity-70">
-                  {pass.qr_code}
-                </p>
-              </div>
-
-              <div className="flex gap-4 mt-6">
-                {/* ✅ Button logic checks if NOT cancelled yet */}
-                {pass.status === "BOOKED" && (
+                {/* Buttons */}
+                <div className="flex flex-col sm:flex-row gap-4 mt-8">
                   <button
-                    onClick={() => handleCancelAndRefund(pass)}
-                    className="flex-1 bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg font-medium transition"
+                    onClick={() => downloadPDF(pass)}
+                    className="flex-1 bg-slate-800 hover:bg-slate-700 text-white py-4 rounded-2xl font-bold transition-all flex items-center justify-center gap-2 shadow-md"
                   >
-                    Cancel & Refund
+                    <Download size={18} /> Download PDF
                   </button>
-                )}
-                <button
-                  onClick={() => downloadPDF(pass)}
-                  className="flex-1 bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg font-medium transition"
-                >
-                  Download PDF
-                </button>
+
+                  {pass.status === "BOOKED" && (
+                    <button
+                      onClick={() => handleCancelAndRefund(pass)}
+                      className="flex-1 bg-rose-50 hover:bg-rose-100 text-rose-600 py-4 rounded-2xl font-bold transition-all flex items-center justify-center gap-2 border border-rose-100"
+                    >
+                      <Trash2 size={18} /> Cancel & Refund
+                    </button>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
-      )}
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

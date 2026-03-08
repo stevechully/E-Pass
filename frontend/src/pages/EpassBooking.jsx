@@ -1,13 +1,12 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import PaymentModal from "../components/PaymentModal"; // Adjust path if needed
+import PaymentModal from "../components/PaymentModal";
+import { Calendar, Clock, Ticket, AlertCircle, ArrowRight } from "lucide-react";
 
 export default function EpassBooking() {
   const [slots, setSlots] = useState([]);
   const [loading, setLoading] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState(null);
-  
-  // New states for payment flow
   const [showPayment, setShowPayment] = useState(false);
   const [pendingBookingId, setPendingBookingId] = useState(null);
   const [selectedDate, setSelectedDate] = useState("");
@@ -22,35 +21,23 @@ export default function EpassBooking() {
     try {
       const res = await fetch("http://localhost:5000/api/entry-slots");
       const data = await res.json();
-
-      if (Array.isArray(data)) {
-        setSlots(data);
-      } else if (Array.isArray(data.data)) {
-        setSlots(data.data);
-      } else if (Array.isArray(data.slots)) {
-        setSlots(data.slots);
-      } else {
-        setSlots([]);
-      }
+      const slotsData = Array.isArray(data) ? data : (data.data || data.slots || []);
+      setSlots(slotsData);
     } catch (err) {
       console.error("Fetch slots error:", err);
     }
   }
 
-  // STEP 1: Initiate Booking (Creates PENDING record)
   async function initiateBooking() {
-    if (!selectedSlot) return alert("Select a slot first");
-
+    if (!selectedSlot) return;
     const slotToBook = slots.find(s => s.id === selectedSlot);
     const remaining = (slotToBook.max_capacity || slotToBook.capacity || 0) - (slotToBook.booked_count || 0);
 
     if (remaining <= 0) return alert("This slot is already full");
-
     const token = localStorage.getItem("token");
-    if (!token) return alert("Please login first");
+    if (!token) return navigate("/login");
 
     setLoading(true);
-
     try {
       const res = await fetch("http://localhost:5000/api/epass/create-booking", {
         method: "POST",
@@ -60,11 +47,8 @@ export default function EpassBooking() {
         },
         body: JSON.stringify({ slot_id: selectedSlot }),
       });
-
       const data = await res.json();
-
       if (data.success) {
-        // Save pending booking info and open Payment Modal
         setPendingBookingId(data.booking.id);
         setSelectedDate(slotToBook.slot_date);
         setShowPayment(true);
@@ -73,18 +57,15 @@ export default function EpassBooking() {
       }
     } catch (err) {
       console.error("Booking init error:", err);
-      alert("Error initiating booking");
     } finally {
       setLoading(false);
     }
   }
 
-  // STEP 2: Confirm Payment (Generates QR and marks PAID)
   async function handlePaymentSuccess() {
     const token = localStorage.getItem("token");
     setLoading(true);
     setShowPayment(false);
-
     try {
       const res = await fetch("http://localhost:5000/api/epass/confirm-payment", {
         method: "POST",
@@ -94,106 +75,110 @@ export default function EpassBooking() {
         },
         body: JSON.stringify({ booking_id: pendingBookingId }),
       });
-
       const data = await res.json();
-
       if (data.success) {
-        // Redirect to success page to show QR Code
-        navigate(`/epass/success/${pendingBookingId}`);
-      } else {
-        alert(data.message || "Payment confirmation failed.");
+        navigate(`/epass/success/${pendingBookingId}`, { replace: true });
       }
     } catch (err) {
       console.error("Payment confirmation error:", err);
-      alert("Something went wrong verifying your payment.");
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <div className="min-h-screen bg-slate-900 text-white p-8">
-      <h1 className="text-3xl font-bold mb-6">Book E-Pass</h1>
+    <div className="min-h-screen mandala-bg p-4 md:p-10 flex flex-col items-center animate-in fade-in duration-500">
+      <div className="w-full max-w-3xl">
+        {/* Header Section */}
+        <div className="mb-12 text-center">
+          <div className="inline-flex items-center justify-center p-3 bg-orange-50 rounded-2xl mb-4 border border-amber-100">
+            <Ticket className="text-orange-600" size={32} />
+          </div>
+          <h1 className="text-4xl font-heading font-bold text-slate-800 mb-3">Temple E-Pass Booking</h1>
+          <p className="text-slate-500 font-medium max-w-lg mx-auto">
+            Secure your entry slot for a peaceful darshan. A small <span className="text-orange-600 font-bold">₹20 Eco Fee</span> helps maintain temple serenity.
+          </p>
+        </div>
 
-      {slots.length === 0 ? (
-        <p>No slots available</p>
-      ) : (
-        <>
-          <div className="grid gap-4 max-w-2xl">
+        {/* Slot Selection */}
+        {slots.length === 0 ? (
+          <div className="bg-white p-12 rounded-3xl border border-gold/10 text-center shadow-sm">
+             <AlertCircle className="mx-auto text-slate-300 mb-4" size={48} />
+             <p className="text-slate-500 font-heading text-xl">No available slots for the upcoming dates.</p>
+          </div>
+        ) : (
+          <div className="grid gap-4">
             {slots.map((slot) => {
               const remaining = (slot.max_capacity || slot.capacity || 0) - (slot.booked_count || 0);
               const isFull = remaining <= 0;
+              const isSelected = selectedSlot === slot.id;
 
               return (
                 <div
                   key={slot.id}
                   onClick={() => !isFull && setSelectedSlot(slot.id)}
-                  className={`p-5 rounded-xl border transition-all 
-                    ${isFull ? "opacity-50 cursor-not-allowed bg-slate-900 border-slate-800" : "cursor-pointer"}
-                    ${selectedSlot === slot.id
-                        ? "border-blue-500 bg-blue-900 shadow-lg shadow-blue-500/20"
-                        : !isFull ? "bg-slate-800 border-slate-700 hover:border-slate-500" : ""
-                    }
+                  className={`group p-6 rounded-2xl border transition-all relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-4 
+                    ${isFull ? "opacity-40 grayscale cursor-not-allowed bg-slate-50 border-slate-200" : "cursor-pointer bg-white"}
+                    ${isSelected ? "border-orange-500 ring-2 ring-orange-500/10 shadow-md" : "border-slate-100 hover:border-orange-300 shadow-sm"}
                   `}
                 >
-                  <p className="text-blue-400 font-semibold">
-                    {new Date(slot.slot_date).toLocaleDateString("en-IN", {
-                      weekday: "long",
-                      year: 'numeric',
-                      month: 'long',
-                      day: 'numeric'
-                    })}
-                  </p>
+                  <div className="flex items-center gap-4">
+                    <div className={`p-3 rounded-xl transition-colors ${isSelected ? "bg-orange-600 text-white" : "bg-slate-50 text-slate-400 group-hover:bg-orange-50 group-hover:text-orange-500"}`}>
+                      <Calendar size={20} />
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-0.5">
+                        {new Date(slot.slot_date).toLocaleDateString("en-IN", { weekday: "long", day: '2-digit', month: 'short' })}
+                      </p>
+                      <p className="text-xl font-heading font-bold text-slate-800 flex items-center gap-2">
+                         <Clock size={16} className="text-slate-400" /> {slot.start_time} - {slot.end_time}
+                      </p>
+                    </div>
+                  </div>
 
-                  <p className="text-lg font-bold">
-                    {slot.start_time} - {slot.end_time}
-                  </p>
-
-                  <p className="mt-2 text-sm text-gray-400">
-                    Capacity left:{" "}
-                    <span
-                      className={
-                        remaining > 5
-                          ? "text-green-400 font-bold"
-                          : remaining > 0
-                          ? "text-orange-400 font-bold"
-                          : "text-red-500 font-bold"
-                      }
-                    >
-                      {isFull ? "Full" : remaining}
+                  <div className="text-right">
+                    <p className="text-xs font-bold text-slate-400 uppercase mb-1">Availability</p>
+                    <span className={`text-sm font-black px-3 py-1 rounded-lg ${remaining > 10 ? "bg-emerald-50 text-emerald-600" : remaining > 0 ? "bg-orange-50 text-orange-600" : "bg-red-50 text-red-600"}`}>
+                      {isFull ? "Sold Out" : `${remaining} Slots Left`}
                     </span>
-                  </p>
+                  </div>
                 </div>
               );
             })}
+
+            {/* Sticky Action Button */}
+            <div className="sticky bottom-8 mt-10 p-2 bg-white/80 backdrop-blur-md rounded-3xl border border-gold/10 shadow-2xl flex items-center gap-4">
+               <div className="flex-1 pl-6">
+                 <p className="text-xs font-bold text-slate-400 uppercase">Contribution</p>
+                 <p className="text-2xl font-heading font-bold text-slate-800">₹20.00</p>
+               </div>
+               <button
+                  disabled={!selectedSlot || loading}
+                  onClick={initiateBooking}
+                  className={`px-8 py-4 rounded-2xl font-bold flex items-center gap-2 transition-all active:scale-95 shadow-lg
+                    ${!selectedSlot || loading 
+                      ? "bg-slate-200 text-slate-400 cursor-not-allowed" 
+                      : "bg-orange-600 hover:bg-orange-500 text-white glow-saffron"
+                    }`}
+                >
+                  {loading ? "Verifying..." : "Confirm & Book"} <ArrowRight size={20} />
+               </button>
+            </div>
           </div>
+        )}
+      </div>
 
-          <button
-            disabled={!selectedSlot || loading}
-            onClick={initiateBooking}
-            className={`mt-6 px-6 py-3 rounded-lg font-bold transition-all shadow-lg 
-              ${!selectedSlot || loading 
-                ? "bg-gray-700 text-gray-500 cursor-not-allowed" 
-                : "bg-blue-600 hover:bg-blue-500 active:scale-95 text-white"
-              }`}
-          >
-            {loading ? "Processing..." : "Pay ₹20 Eco Fee & Book"}
-          </button>
-        </>
-      )}
-
-      {/* Render Payment Modal */}
       {showPayment && (
         <PaymentModal
           isOpen={showPayment}
           onClose={() => setShowPayment(false)}
-          puja={{ puja_name: "Temple Eco Fee (e-Pass)" }} 
+          puja={{ puja_name: "Temple Entry E-Pass" }} 
           bookingDate={selectedDate}
           selectedAddons={[]}
           ecoFee={20}
           totalAmount={20}
-          isEpass={true}                // ✅ ADDED: Tells modal to skip Vazhipadu validation
-          bookingId={pendingBookingId}  // ✅ ADDED: Passes the already-created ID
+          isEpass={true}
+          bookingId={pendingBookingId}
           onSuccess={handlePaymentSuccess}
         />
       )}

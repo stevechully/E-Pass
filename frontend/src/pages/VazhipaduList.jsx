@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import { getAllPujas } from "../services/vazhipaduService";
 import { useNavigate } from "react-router-dom";
+import { Flower2, IndianRupee } from "lucide-react";
 
 const VazhipaduList = () => {
+
   const [pujas, setPujas] = useState([]);
   const navigate = useNavigate();
 
@@ -20,40 +22,100 @@ const VazhipaduList = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white p-6">
-      <h1 className="text-3xl font-bold mb-8 text-center">
-        Vazhipadu Services
-      </h1>
 
-      <div className="grid md:grid-cols-3 gap-6">
-        {pujas.map((puja) => (
-          <div
-            key={puja.id}
-            className="bg-gray-800 p-6 rounded-xl shadow-lg"
-          >
-            <h2 className="text-xl font-semibold">{puja.puja_name}</h2>
-            <p className="text-gray-400 mt-2">{puja.description}</p>
+    <div className="min-h-screen mandala-bg p-8">
 
-            <div className="mt-4">
-              <span className="text-green-400 font-bold">
-                ₹{puja.price}
-              </span>
-              <span className="ml-3 text-sm bg-purple-600 px-2 py-1 rounded">
-                {puja.puja_type}
-              </span>
+      <div className="max-w-6xl mx-auto">
+
+        <h1 className="text-4xl font-heading text-center mb-12 text-warmGray">
+          Temple Vazhipadu Services
+        </h1>
+
+
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+
+          {pujas.map((puja) => (
+
+            <div
+              key={puja.id}
+              className="
+              bg-white dark:bg-charcoal
+              p-8
+              rounded-3xl
+              shadow-lg
+              border
+              border-gold/10
+              transition
+              hover:shadow-xl
+              hover:-translate-y-1
+              "
+            >
+
+              {/* icon */}
+
+              <div className="mb-4 text-saffron">
+                <Flower2 size={28} />
+              </div>
+
+
+              <h2 className="text-xl font-heading text-warmGray">
+                {puja.puja_name}
+              </h2>
+
+
+              <p className="text-sm text-warmGray/70 mt-2">
+                {puja.description}
+              </p>
+
+
+              {/* price */}
+
+              <div className="flex items-center justify-between mt-6">
+
+                <span className="flex items-center gap-1 text-saffron font-bold text-lg">
+                  <IndianRupee size={16} />
+                  {puja.price}
+                </span>
+
+                <span className="text-xs bg-gold/20 text-gold px-3 py-1 rounded-full">
+                  {puja.puja_type}
+                </span>
+
+              </div>
+
+
+              {/* button */}
+
+              <button
+                onClick={() => navigate(`/vazhipadu/booking/${puja.id}`)}
+                className="
+                mt-6
+                w-full
+                bg-saffron
+                hover:bg-orange-600
+                text-white
+                font-semibold
+                py-3
+                rounded-xl
+                transition
+                shadow-md
+                "
+              >
+                Book Now
+              </button>
+
             </div>
 
-            <button
-              onClick={() => navigate(`/vazhipadu/${puja.id}`)}
-              className="mt-6 w-full bg-green-600 hover:bg-green-700 py-2 rounded-lg transition"
-            >
-              Book Now
-            </button>
-          </div>
-        ))}
+          ))}
+
+        </div>
+
       </div>
+
     </div>
+
   );
+
 };
 
 export default VazhipaduList;

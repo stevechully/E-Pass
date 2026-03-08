@@ -1,6 +1,5 @@
 import { supabase } from '../config/supabase.js';
 import crypto from 'crypto';
-// Removed helper import
 
 export const getAccommodations = async (req, res, next) => {
   try {
@@ -44,7 +43,8 @@ export const createAccommodationBooking = async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'Accommodation unavailable' });
     }
 
-    const qrCode = `ACC-${crypto.randomBytes(6).toString('hex').toUpperCase()}`;
+    // ✅ FIX: Start as PENDING to wait for PaymentModal success
+    const qrCode = `PENDING-${crypto.randomBytes(6).toString('hex').toUpperCase()}`;
     const checkInDeadline = new Date(check_in_date);
     checkInDeadline.setHours(18, 0, 0, 0);
 
@@ -56,7 +56,7 @@ export const createAccommodationBooking = async (req, res, next) => {
         check_in_date,
         check_out_date,
         check_in_deadline: checkInDeadline.toISOString(),
-        status: 'BOOKED',
+        status: 'PENDING', // ✅ Changed from BOOKED to PENDING
         qr_code: qrCode
       })
       .select()
@@ -64,6 +64,40 @@ export const createAccommodationBooking = async (req, res, next) => {
 
     if (error) throw error;
     res.status(201).json({ success: true, booking });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// ✅ ADDED: The Payment Confirmation Handler
+export const confirmAccommodationPayment = async (req, res, next) => {
+  try {
+    const { booking_id } = req.body;
+    const userId = req.user.id;
+
+    if (!booking_id) {
+      return res.status(400).json({ success: false, message: 'booking_id is required' });
+    }
+
+    // Generate the official scannable Accommodation QR
+    const finalQrCode = `ACC-${crypto.randomBytes(6).toString('hex').toUpperCase()}`;
+
+    const { data: booking, error } = await supabase
+      .from('accommodation_bookings')
+      .update({ 
+        status: 'BOOKED', 
+        qr_code: finalQrCode 
+      })
+      .eq('id', booking_id)
+      .eq('user_id', userId)
+      .select()
+      .single();
+
+    if (error || !booking) {
+      return res.status(404).json({ success: false, message: 'Booking not found or update failed' });
+    }
+
+    res.json({ success: true, message: 'Payment confirmed and QR generated', booking });
   } catch (err) {
     next(err);
   }
@@ -93,7 +127,6 @@ export const cancelAccommodationBooking = async (req, res, next) => {
     const bookingId = req.params.id;
     const userId = req.user.id;
 
-    // 1. Update status to CANCELLED
     const { data, error } = await supabase
       .from('accommodation_bookings')
       .update({ status: 'CANCELLED' })
@@ -107,7 +140,6 @@ export const cancelAccommodationBooking = async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'Unable to cancel booking' });
     }
 
-    // 2. ⭐ DIRECT REFUND LOGIC (Start)
     const { data: payment } = await supabase
       .from("payments")
       .select("id, amount")
@@ -126,7 +158,6 @@ export const cancelAccommodationBooking = async (req, res, next) => {
         refund_status: "PENDING"
       });
     }
-    // ⭐ DIRECT REFUND LOGIC (End)
 
     res.json({
       success: true,

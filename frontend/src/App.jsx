@@ -10,29 +10,36 @@ import BookingDetails from "./pages/BookingDetails";
 import Payments from "./pages/Payments";
 import PaymentPage from "./pages/PaymentPage"; 
 
-// Module Pages
+// Layout Component
+import Layout from "./components/layout/Layout";
+
+// Module Pages (User)
 import EpassBooking from "./pages/EpassBooking";
 import MyEpass from "./pages/MyEpass";
+import EpassSuccess from './pages/EpassSuccess';
+
 import MyFoodBookings from "./pages/MyFoodBookings";
 import FoodBooking from "./pages/FoodBooking"; 
+import FoodSuccess from "./pages/FoodSuccess"; 
+
 import AccommodationBooking from "./pages/AccommodationBooking";
 import MyAccommodation from "./pages/MyAccommodation";
+import AccommodationSuccess from "./pages/AccommodationSuccess";
 
-// ✅ VAZHIPADU RESTRUCTURED IMPORTS
-import VazhipaduHome from "./pages/VazhipaduHome";       // Landing with 2 Cards
-import DailyPoojaList from "./pages/DailyPoojaList";     // Filtered Regular List
-import SpecialPoojaList from "./pages/SpecialPoojaList"; // Filtered Special List
-import VazhipaduBooking from "./pages/VazhipaduBooking"; // The Booking Engine
+// Vazhipadu (User)
+import VazhipaduHome from "./pages/VazhipaduHome"; 
+import DailyPoojaList from "./pages/DailyPoojaList"; 
+import SpecialPoojaList from "./pages/SpecialPoojaList"; 
+import VazhipaduBooking from "./pages/VazhipaduBooking"; 
 import MyVazhipadu from "./pages/MyVazhipadu";
 import VazhipaduSuccess from "./pages/VazhipaduSuccess";
 import PoojaCalendar from "./pages/PoojaCalendar";
 
 // Admin Pages
-import AdminPanel from "./pages/AdminPanel";
-import AdminUsers from "./pages/AdminUsers";
-import AdminRefunds from "./pages/AdminRefunds";
-
-import EpassSuccess from './pages/EpassSuccess';
+import AdminDashboard from "./pages/AdminDashboard"; 
+import AdminPanel from "./pages/AdminPanel";         
+import AdminUsers from "./pages/AdminUsers";         
+import AdminRefunds from "./pages/AdminRefunds";     
 
 export default function App() {
   return (
@@ -43,48 +50,47 @@ export default function App() {
 
       {/* 🔐 PROTECTED ROUTES */}
       <Route element={<ProtectedRoute />}>
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/bookings" element={<Bookings />} />
-        <Route path="/booking/:module/:id" element={<BookingDetails />} />
-        <Route path="/payments" element={<Payments />} />
+        <Route element={<Layout />}> 
+          
+          {/* --- USER PORTAL --- */}
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/bookings" element={<Bookings />} />
+          <Route path="/booking/:module/:id" element={<BookingDetails />} />
+          <Route path="/payments" element={<Payments />} />
 
-        {/* E-Pass & Food */}
-        <Route path="/epass" element={<EpassBooking />} />
-        <Route path="/my-epass" element={<MyEpass />} />
-        <Route path="/food" element={<FoodBooking />} />
-        <Route path="/my-food" element={<MyFoodBookings />} />
-        <Route path="/epass/success/:id" element={<EpassSuccess />} />
+          {/* E-Pass, Food, & Accommodation */}
+          <Route path="/epass" element={<EpassBooking />} />
+          <Route path="/my-epass" element={<MyEpass />} />
+          <Route path="/epass/success/:id" element={<EpassSuccess />} />
+          
+          <Route path="/food" element={<FoodBooking />} />
+          <Route path="/my-food" element={<MyFoodBookings />} />
+          <Route path="/food/success/:id" element={<FoodSuccess />} /> 
+          
+          <Route path="/accommodation" element={<AccommodationBooking />} />
+          <Route path="/my-accommodation" element={<MyAccommodation />} />
+          <Route path="/accommodation/success/:id" element={<AccommodationSuccess />} />
 
-        {/* Accommodation */}
-        <Route path="/accommodation" element={<AccommodationBooking />} />
-        <Route path="/my-accommodation" element={<MyAccommodation />} />
+          {/* Vazhipadu / Pooja */}
+          <Route path="/vazhipadu" element={<VazhipaduHome />} /> 
+          <Route path="/vazhipadu/daily" element={<DailyPoojaList />} />
+          <Route path="/vazhipadu/special" element={<SpecialPoojaList />} />
+          <Route path="/vazhipadu/book/:id" element={<VazhipaduBooking />} />
+          <Route path="/vazhipadu/success/:id" element={<VazhipaduSuccess />} /> 
+          <Route path="/my-vazhipadu" element={<MyVazhipadu />} />
+          <Route path="/calendar" element={<PoojaCalendar />} />
+          <Route path="/payment" element={<PaymentPage />} />
 
-        {/* 🔥 🔥 VAZHIPADU ARCHITECTURE (RESTRUCTURED) 🔥 🔥 */}
-        {/* 1. The Hub */}
-        <Route path="/vazhipadu" element={<VazhipaduHome />} /> 
-        
-        {/* 2. The Categorized Lists */}
-        <Route path="/vazhipadu/daily" element={<DailyPoojaList />} />
-        <Route path="/vazhipadu/special" element={<SpecialPoojaList />} />
-        
-        {/* 3. The Functional Engine (used by both lists) */}
-        <Route path="/vazhipadu/book/:id" element={<VazhipaduBooking />} />
-        
-        {/* 4. Post-Booking & Info */}
-        <Route path="/vazhipadu/success/:id" element={<VazhipaduSuccess />} />
-        <Route path="/my-vazhipadu" element={<MyVazhipadu />} />
-        <Route path="/calendar" element={<PoojaCalendar />} />
+          {/* --- ADMIN PANEL --- */}
+          <Route path="/admin" element={<AdminDashboard />} /> 
+          <Route path="/admin/users" element={<AdminUsers />} /> 
+          <Route path="/admin/refunds" element={<AdminRefunds />} />
+          <Route path="/admin/slots" element={<AdminPanel />} />
 
-        {/* ⭐ Payment Route */}
-        <Route path="/payment" element={<PaymentPage />} />
-
-        {/* 🛡️ Admin Routes */}
-        <Route path="/admin" element={<AdminPanel />} />
-        <Route path="/admin-users" element={<AdminUsers />} />
-        <Route path="/admin/refunds" element={<AdminRefunds />} />
+        </Route>
       </Route>
 
-      {/* 🚩 Catch-all (MUST BE LAST) */}
+      {/* 404 Fallback */}
       <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>
   );

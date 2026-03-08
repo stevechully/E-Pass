@@ -1,12 +1,15 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
 import { QRCodeCanvas } from "qrcode.react";
-import { cancelBooking, requestRefund } from '../services/refundService'; // ✅ Imported Refund Service
+import { jsPDF } from "jspdf";
+import { cancelBooking, requestRefund } from '../services/refundService';
+import { Flame, Calendar, IndianRupee, Trash2, Download } from "lucide-react";
 
 const API = import.meta.env.VITE_API_URL;
 
 export default function MyVazhipadu() {
   const [bookings, setBookings] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchBookings();
@@ -15,28 +18,23 @@ export default function MyVazhipadu() {
   const fetchBookings = async () => {
     try {
       const token = localStorage.getItem("token");
-
       const res = await axios.get(`${API}/vazhipadu/my`, {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
+        headers: { Authorization: `Bearer ${token}` }
       });
-
       setBookings(res.data.bookings || []);
     } catch (err) {
       console.error(err);
+    } finally {
+      setLoading(false);
     }
   };
 
-  // ✅ ADDED: Cancel + Automatic Refund Request Logic
   const handleCancelAndRefund = async (booking) => {
     if (!window.confirm("Are you sure you want to cancel this Pooja and request a refund?")) return;
 
     try {
-      // 1. Mark the pooja as CANCELLED in the DB
       await cancelBooking(booking.id, 'POOJA');
 
-      // 2. Create the refund request in the master refund table
       await requestRefund({
         booking_id: booking.id,
         booking_type: 'POOJA',
@@ -45,66 +43,115 @@ export default function MyVazhipadu() {
       });
 
       alert("Pooja cancelled and refund requested successfully! ✅");
-      fetchBookings(); // Refresh the list to update status
+      fetchBookings(); 
     } catch (err) {
       console.error(err);
       alert(err.response?.data?.message || "Error processing cancellation.");
     }
   };
 
+  function downloadReceipt(booking) {
+    const doc = new jsPDF();
+    doc.setFontSize(22);
+    doc.text("OFFICIAL VAZHIPADU RECEIPT", 105, 20, { align: "center" });
+    doc.setFontSize(12);
+    doc.text(`Pooja: ${booking.vazhipadu_services?.puja_name}`, 20, 50);
+    doc.text(`Date: ${new Date(booking.booking_date).toDateString()}`, 20, 60);
+    doc.text(`Total Paid: Rs. ${booking.total_amount}`, 20, 70);
+    doc.text(`Status: ${booking.status}`, 20, 80);
+    doc.text("RESERVATION CODE:", 20, 100);
+    doc.setFont("courier", "bold");
+    doc.text(booking.qr_code || "N/A", 20, 110);
+    doc.save(`Vazhipadu_${booking.qr_code || booking.id}.pdf`);
+  }
+
+  if (loading) return (
+    <div className="flex items-center justify-center p-20">
+      <div className="animate-spin h-10 w-10 border-b-2 border-orange-600 rounded-full"></div>
+    </div>
+  );
+
   return (
-    <div className="min-h-screen bg-gray-900 text-white p-6">
-      <h1 className="text-2xl font-bold mb-6">My Vazhipadu Bookings</h1>
+    <div className="text-slate-800 flex justify-center px-2 sm:px-6 py-10 animate-in fade-in duration-500">
+      <div className="w-full max-w-3xl">
 
-      {bookings.length === 0 ? (
-        <p className="text-gray-400">No bookings found.</p>
-      ) : (
-        <div className="grid md:grid-cols-2 gap-6">
-          {bookings.map((booking) => (
-            <div
-              key={booking.id}
-              className="bg-gray-800 p-6 rounded-xl shadow-lg flex flex-col justify-between"
-            >
-              <div>
-                <h2 className="text-lg font-semibold">
-                  {booking.vazhipadu_services?.puja_name}
-                </h2>
-
-                <p className="text-gray-400 mt-2">
-                  Date: {booking.booking_date}
-                </p>
-
-                <p className="mt-2">
-                  Status:{" "}
-                  <span className={booking.status === 'CANCELLED' ? "text-red-400 font-semibold" : "text-emerald-400 font-semibold"}>
-                    {booking.status}
-                  </span>
-                </p>
-
-                <p className="mt-2">
-                  Total Paid: ₹{booking.total_amount}
-                </p>
-              </div>
-
-              {booking.qr_code && (
-                <div className="mt-4 bg-white p-4 rounded-lg w-fit">
-                  <QRCodeCanvas value={booking.qr_code} size={120} />
-                </div>
-              )}
-
-              {/* ✅ ADDED: Action Button */}
-              {booking.status !== 'CANCELLED' && (
-                <button
-                  onClick={() => handleCancelAndRefund(booking)}
-                  className="mt-6 w-full bg-orange-600 hover:bg-orange-700 text-white font-bold py-3 rounded-xl transition-all shadow-lg shadow-orange-900/20"
-                >
-                  Cancel & Request Refund
-                </button>
-              )}
-            </div>
-          ))}
+        {/* Header */}
+        <div className="mb-10 text-center">
+          <h1 className="text-4xl font-heading font-bold text-slate-800 mb-2">My Vazhipadu</h1>
+          <p className="text-slate-500 font-medium">View your booked Poojas, download receipts, and manage offerings.</p>
         </div>
-      )}
+
+        {bookings.length === 0 ? (
+          <div className="bg-white p-12 rounded-3xl border border-gold/10 text-center shadow-sm">
+            <Flame className="mx-auto text-slate-200 mb-4" size={48} />
+            <p className="text-slate-500 font-heading text-lg">You have no Pooja bookings yet.</p>
+          </div>
+        ) : (
+          <div className="space-y-8">
+            {bookings.map((booking) => {
+              const isCancelled = booking.status === "CANCELLED";
+
+              return (
+                <div key={booking.id} className={`bg-white border border-amber-100 rounded-[2rem] p-8 shadow-xl relative overflow-hidden ${isCancelled ? 'opacity-50 grayscale' : ''}`}>
+                  
+                  {/* Status Badge */}
+                  <div className="absolute top-6 right-8">
+                     <span className={`px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-widest ${booking.status === "BOOKED" ? "bg-emerald-50 text-emerald-600" : "bg-rose-50 text-rose-600"}`}>
+                       {booking.status}
+                     </span>
+                  </div>
+
+                  {/* Info Section */}
+                  <div className="flex items-start gap-4 mb-8 mt-2">
+                    <div className="p-3 bg-orange-50 text-orange-600 rounded-2xl">
+                      <Flame size={28} />
+                    </div>
+                    <div>
+                      <p className="text-2xl font-heading font-bold text-slate-800">
+                        {booking.vazhipadu_services?.puja_name}
+                      </p>
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6 mt-2">
+                        <p className="text-slate-500 font-bold flex items-center gap-2">
+                          <Calendar size={16} className="text-slate-400" /> 
+                          {new Date(booking.booking_date).toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
+                        </p>
+                        <p className="text-orange-600 font-bold flex items-center gap-1 bg-orange-50 px-2 py-1 rounded-md w-max">
+                          <IndianRupee size={14} /> {booking.total_amount}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* QR Code Container */}
+                  {!isCancelled && (
+                    <div className="mt-4 p-8 bg-slate-50 rounded-3xl flex flex-col items-center max-w-sm mx-auto border border-slate-100 shadow-inner">
+                      {booking.qr_code ? (
+                        <QRCodeCanvas value={booking.qr_code} size={180} level={"H"} includeMargin={true} />
+                      ) : (
+                        <div className="h-[180px] flex items-center justify-center text-slate-400 font-bold">QR Pending</div>
+                      )}
+                      <p className="text-slate-400 text-xs font-mono mt-4 uppercase tracking-[0.2em]">{booking.qr_code || "PENDING"}</p>
+                    </div>
+                  )}
+
+                  {/* Actions */}
+                  <div className="flex flex-col sm:flex-row gap-4 mt-8">
+                    <button onClick={() => downloadReceipt(booking)} className="flex-1 bg-slate-800 hover:bg-slate-700 text-white py-4 rounded-2xl font-bold transition-all flex items-center justify-center gap-2 shadow-md">
+                      <Download size={18} /> Download Receipt
+                    </button>
+
+                    {!isCancelled && (
+                      <button onClick={() => handleCancelAndRefund(booking)} className="flex-1 bg-rose-50 hover:bg-rose-100 text-rose-600 py-4 rounded-2xl font-bold transition-all flex items-center justify-center gap-2 border border-rose-100">
+                        <Trash2 size={18} /> Cancel & Refund
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

@@ -1,10 +1,16 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom"; // ⭐ Added Import
+import { useNavigate } from "react-router-dom";
+import { Utensils, Clock, Calendar, ArrowRight, Info } from "lucide-react";
+import PaymentModal from "../components/PaymentModal";
 
 export default function FoodBooking() {
   const [slots, setSlots] = useState([]);
   const [loading, setLoading] = useState(false);
-  const navigate = useNavigate(); // ⭐ Init Hook
+  const [showPayment, setShowPayment] = useState(false);
+  const [pendingBookingId, setPendingBookingId] = useState(null);
+  const [selectedDate, setSelectedDate] = useState("");
+
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetchFoodSlots();
@@ -12,16 +18,13 @@ export default function FoodBooking() {
 
   async function fetchFoodSlots() {
     try {
-      const token = localStorage.getItem("token"); // Added auth header safety
+      const token = localStorage.getItem("token");
       const res = await fetch("http://localhost:5000/api/food-slots", {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
-
-      if (Array.isArray(data)) setSlots(data);
-      else if (Array.isArray(data.data)) setSlots(data.data);
-      else if (Array.isArray(data.slots)) setSlots(data.slots);
-      else setSlots([]);
+      const slotsData = Array.isArray(data) ? data : (data.data || data.slots || []);
+      setSlots(slotsData);
     } catch (err) {
       console.error("Food slot fetch error:", err);
       setSlots([]);
@@ -30,108 +33,144 @@ export default function FoodBooking() {
 
   async function bookFood(slotId) {
     const token = localStorage.getItem("token");
-    if (!token) return alert("Please login first");
+    if (!token) return navigate("/login");
 
     setLoading(true);
     try {
-      const res = await fetch(
-        "http://localhost:5000/api/food/book",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`
-          },
-          body: JSON.stringify({ food_slot_id: slotId })
-        }
-      );
+      const res = await fetch("http://localhost:5000/api/food/book", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ food_slot_id: slotId }),
+      });
 
       const data = await res.json();
 
       if (data.success) {
-        // ⭐ LOGIC: Check meal type to decide next step
-        const selectedSlot = slots.find(s => s.id === slotId);
-        
+        const selectedSlot = slots.find((s) => s.id === slotId);
         if (selectedSlot?.meal_type === "FREE") {
           alert("Free Meal Booked Successfully! 🍽️");
-          navigate("/my-food"); // No payment needed
+          navigate("/my-food");
         } else {
-          // Redirect to payment page
-          navigate("/payment", {
-            state: {
-              module: "FOOD",
-              booking_id: data.booking.id, // Ensure backend sends this
-              amount: 50 // Fixed price for paid meals (or derive from slot)
-            }
-          });
+          setPendingBookingId(data.booking.id);
+          setSelectedDate(selectedSlot.slot_date);
+          setShowPayment(true);
         }
       } else {
         alert(data.message || "Booking failed");
       }
     } catch (err) {
       console.error("Food booking error:", err);
-      alert("Booking error");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // ✅ RESILIENT PAYMENT SUCCESS HANDLER
+  async function handlePaymentSuccess() {
+    const token = localStorage.getItem("token");
+    setLoading(true);
+    setShowPayment(false);
+
+    try {
+      const res = await fetch("http://localhost:5000/api/food/confirm-payment", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ booking_id: pendingBookingId }),
+      });
+
+      // 🛡️ CRITICAL FIX: Check if the backend actually found the route before parsing JSON
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.error("Server Error Response:", errorText);
+        alert(`Backend Error (${res.status}): The confirm-payment endpoint is missing on your Node server!`);
+        setLoading(false);
+        return; 
+      }
+
+      const data = await res.json();
+
+      if (data.success) {
+        navigate(`/food/success/${pendingBookingId}`, { replace: true });
+      } else {
+        alert(data.message || "Payment confirmation failed.");
+      }
+    } catch (err) {
+      console.error("Payment confirmation error:", err);
+      alert("Payment verification failed. Please check the console for details.");
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <div className="min-h-screen bg-slate-900 text-white p-8">
-      <h1 className="text-3xl font-bold mb-2">Book Food</h1>
-      <p className="text-gray-400 mb-8">
-        Choose a meal slot. Paid meals require payment confirmation.
-      </p>
-
-      {slots.length === 0 ? (
-        <p className="text-gray-500">No food slots available</p>
-      ) : (
-        <div className="grid gap-4 max-w-2xl">
-          {slots.map(slot => {
-            const remaining = slot.max_capacity - slot.booked_count;
-            const isFull = remaining <= 0;
-
-            return (
-              <div
-                key={slot.id}
-                className="bg-slate-800 p-6 rounded-xl border border-slate-700 flex justify-between items-center"
-              >
-                <div>
-                  <p className={`font-bold uppercase text-sm mb-1 ${slot.meal_type === 'FREE' ? 'text-green-400' : 'text-yellow-400'}`}>
-                    {slot.meal_type} {slot.meal_type !== 'FREE' && '• ₹50'}
-                  </p>
-
-                  <p className="text-lg font-semibold">
-                    {new Date(slot.slot_date).toDateString()}
-                  </p>
-
-                  <p className="text-gray-300">
-                    {slot.start_time} – {slot.end_time}
-                  </p>
-
-                  <p className="text-sm mt-1 text-gray-400">
-                    <span className={remaining > 5 ? "text-green-400" : "text-orange-400"}>
-                      {remaining} spots left
-                    </span>
-                  </p>
-                </div>
-
-                <button
-                  disabled={loading || isFull}
-                  onClick={() => bookFood(slot.id)}
-                  className={`px-6 py-3 rounded-lg font-bold transition-all ${
-                    isFull
-                      ? "bg-gray-700 cursor-not-allowed"
-                      : "bg-blue-600 hover:bg-blue-500 shadow-lg shadow-blue-500/20"
-                  }`}
-                >
-                  {isFull ? "Full" : slot.meal_type === 'FREE' ? "Book Free" : "Book & Pay"}
-                </button>
-              </div>
-            );
-          })}
+    <div className="text-slate-800 flex justify-center px-6 py-10 animate-in fade-in duration-500">
+      <div className="w-full max-w-3xl">
+        <div className="mb-12 text-center">
+          <div className="inline-flex items-center justify-center p-3 bg-orange-50 rounded-2xl mb-4 border border-amber-100">
+            <Utensils className="text-orange-600" size={32} />
+          </div>
+          <h1 className="text-4xl font-heading font-bold text-slate-800 mb-3">Temple Food Booking</h1>
+          <p className="text-slate-500 font-medium max-w-lg mx-auto">Reserve a meal slot at the temple dining hall.</p>
         </div>
-      )}
+
+        {slots.length === 0 ? (
+          <div className="bg-white p-12 rounded-3xl border border-gold/10 text-center shadow-sm">
+            <Info className="mx-auto text-slate-200 mb-4" size={48} />
+            <p className="text-slate-500 font-heading text-lg">No food slots available right now.</p>
+          </div>
+        ) : (
+          <div className="space-y-5">
+            {slots.map((slot) => {
+              const remaining = slot.max_capacity - slot.booked_count;
+              const isFull = remaining <= 0;
+              const isFree = slot.meal_type === "FREE";
+
+              return (
+                <div key={slot.id} className={`bg-white border border-amber-50 rounded-[2rem] p-8 shadow-sm transition-all relative flex flex-col md:flex-row md:items-center justify-between gap-6 ${isFull ? "opacity-50 grayscale" : "hover:border-orange-200 hover:shadow-md"}`}>
+                  <div className="flex flex-col gap-3">
+                    <span className={`text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest ${isFree ? "bg-emerald-50 text-emerald-600" : "bg-amber-50 text-amber-600"}`}>
+                      {isFree ? "🍚 Free Meal" : "🍛 Paid Meal • ₹50"}
+                    </span>
+                    <div>
+                      <p className="text-xl font-heading font-bold text-slate-800 flex items-center gap-2">
+                        <Calendar size={18} className="text-slate-400" /> {new Date(slot.slot_date).toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "long" })}
+                      </p>
+                      <p className="text-slate-500 font-bold flex items-center gap-2 mt-1">
+                        <Clock size={16} className="text-slate-400" /> {slot.start_time} – {slot.end_time}
+                      </p>
+                    </div>
+                  </div>
+                  <button disabled={loading || isFull} onClick={() => bookFood(slot.id)} className={`px-8 py-4 rounded-2xl font-bold flex items-center justify-center gap-2 transition-all active:scale-95 shadow-md ${isFull ? "bg-slate-100 text-slate-400" : "bg-orange-600 hover:bg-orange-500 text-white"}`}>
+                    {isFull ? "Full" : isFree ? "Book Free" : "Book & Pay"} {!isFull && <ArrowRight size={18} />}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {showPayment && (
+          <PaymentModal
+            isOpen={showPayment}
+            onClose={() => setShowPayment(false)}
+            puja={{ puja_name: "Temple Food Booking" }}
+            bookingDate={selectedDate}
+            selectedAddons={[]}
+            ecoFee={0}
+            totalAmount={50}
+            bookingId={pendingBookingId}
+            isEpass={true} 
+            moduleName="FOOD"
+            onSuccess={handlePaymentSuccess}
+          />
+        )}
+      </div>
     </div>
   );
 }

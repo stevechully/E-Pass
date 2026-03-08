@@ -5,10 +5,11 @@ import {
   createEntrySlot,
   toggleEntrySlot,
   createFoodSlot,
-  toggleFoodSlot
+  toggleFoodSlot,
+  getAdminDashboardStats // ✅ Imported new stats controller
 } from "../controllers/admin.controller.js";
 
-// ✅ 1. Import the new refund controllers
+// ✅ 1. Import the refund controllers
 import {
   getPendingRefunds,
   processRefund
@@ -20,18 +21,23 @@ const router = Router();
 router.use(requireAuth, requireAdmin);
 
 /**
- * User Management
+ * 📊 Dashboard Analytics
+ */
+router.get("/stats", getAdminDashboardStats); // ✅ Added stats route
+
+/**
+ * 👥 User Management
  */
 router.get("/users", getAllUsers);
 
 /**
- * Entry Slot Management
+ * 🎟️ Entry Slot Management
  */
 router.post("/entry-slots", createEntrySlot);
 router.patch("/entry-slots/:id/toggle", toggleEntrySlot);
 
 /**
- * Food Slot Management
+ * 🍱 Food Slot Management
  */
 router.post("/food-slots", createFoodSlot);
 router.patch("/food-slots/:id/toggle", toggleFoodSlot);
@@ -39,7 +45,7 @@ router.patch("/food-slots/:id/toggle", toggleFoodSlot);
 /**
  * 💰 Refund Management
  */
-// ✅ 2. Add the refund routes
+// ✅ 2. Refund routes
 router.get("/refunds", getPendingRefunds);
 router.post("/refunds/:id/process", processRefund);
 

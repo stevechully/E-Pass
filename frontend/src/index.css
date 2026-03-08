@@ -1,25 +1,40 @@
-/* 1. Import the Font */
+/* 1. Import Fonts */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* 2. Enforce the font globally */
+/* 2. Global Styling */
 body {
   font-family: 'Inter', sans-serif;
-  -webkit-font-smoothing: antialiased; /* Makes font look smoother on Mac */
+  background-color: #FAFAF9; /* Ivory/Stone background */
+  -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Optional: Custom Scrollbar for Sidebar */
-.custom-scrollbar::-webkit-scrollbar {
-  width: 6px;
+/* 3. Temple UI Effects */
+.mandala-bg {
+  background-image:
+    radial-gradient(circle at 15% 15%, rgba(255, 140, 0, 0.06) 0%, transparent 35%),
+    radial-gradient(circle at 85% 85%, rgba(255, 200, 0, 0.06) 0%, transparent 35%),
+    radial-gradient(circle at 50% 50%, rgba(255, 140, 0, 0.02) 0%, transparent 60%);
 }
-.custom-scrollbar::-webkit-scrollbar-track {
-  background: transparent;
+
+.glow-saffron {
+  transition: all 0.3s ease-in-out;
 }
-.custom-scrollbar::-webkit-scrollbar-thumb {
-  background-color: #475569;
-  border-radius: 20px;
+
+.glow-saffron:hover {
+  box-shadow: 0 0 20px rgba(255, 140, 0, 0.3);
+  transform: translateY(-1px);
+}
+
+/* 4. Custom Scrollbar for Sidebar */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }

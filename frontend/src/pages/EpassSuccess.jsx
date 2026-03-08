@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
-import { useParams, Link } from "react-router-dom";
-import QRCode from "react-qr-code"; // Make sure to npm install react-qr-code
+import { useParams, useNavigate } from "react-router-dom";
+import QRCode from "react-qr-code";
+import { CheckCircle, Calendar, Clock, MapPin, ArrowRight, Download } from "lucide-react";
 
 export default function EpassSuccess() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [booking, setBooking] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -18,10 +20,8 @@ export default function EpassSuccess() {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
-
       if (data.success) {
-        // Find the specific booking that matches the ID in the URL
-        const currentBooking = data.bookings.find(b => b.id === id);
+        const currentBooking = data.bookings.find(b => String(b.id) === String(id));
         setBooking(currentBooking);
       }
     } catch (err) {
@@ -31,65 +31,91 @@ export default function EpassSuccess() {
     }
   }
 
-  if (loading) {
-    return <div className="min-h-screen bg-slate-900 text-white p-8 text-center mt-20">Loading your pass...</div>;
-  }
+  if (loading) return (
+    <div className="min-h-screen mandala-bg flex flex-col items-center justify-center p-8">
+      <div className="animate-spin h-10 w-10 border-b-2 border-orange-600 rounded-full mb-4"></div>
+      <p className="text-slate-500 font-heading font-bold animate-pulse">Syncing your entry pass...</p>
+    </div>
+  );
 
-  if (!booking) {
-    return (
-      <div className="min-h-screen bg-slate-900 text-white p-8 text-center mt-20">
-        <h2 className="text-2xl font-bold text-red-500">Booking not found!</h2>
-        <Link to="/epass" className="text-blue-400 underline mt-4 block">Go back to booking</Link>
+  if (!booking) return (
+    <div className="min-h-screen mandala-bg flex flex-col items-center justify-center p-8">
+      <div className="bg-white p-10 rounded-3xl shadow-xl border border-red-100 text-center max-w-md">
+        <h2 className="text-3xl font-heading font-bold text-red-500 mb-4">Pass Missing</h2>
+        <p className="text-slate-500 mb-8 font-medium">We couldn't retrieve this specific pass. It may still be generating.</p>
+        <button onClick={() => navigate("/epass")} className="w-full bg-slate-800 text-white py-4 rounded-xl font-bold">Try Again</button>
       </div>
-    );
-  }
+    </div>
+  );
 
   return (
-    <div className="min-h-screen bg-slate-900 text-white p-8 flex flex-col items-center justify-center">
-      <div className="bg-slate-800 p-8 rounded-2xl border border-slate-700 max-w-md w-full text-center shadow-xl">
-        <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-4">
-          <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
-          </svg>
-        </div>
+    <div className="min-h-screen mandala-bg p-4 sm:p-10 flex flex-col items-center justify-center animate-in zoom-in-95 duration-500">
+      <div className="bg-white rounded-[2rem] shadow-2xl border border-amber-200/50 max-w-md w-full overflow-hidden relative">
         
-        <h1 className="text-3xl font-bold text-white mb-2">Booking Confirmed!</h1>
-        <p className="text-gray-400 mb-6">Payment of ₹20 Eco Fee successful.</p>
-
-        {/* QR Code Section */}
-        <div className="bg-white p-4 rounded-xl inline-block mb-6 shadow-inner">
-          {booking.qr_code ? (
-             <QRCode value={booking.qr_code} size={200} />
-          ) : (
-             <div className="h-48 w-48 bg-gray-200 flex items-center justify-center text-gray-800 font-bold">
-               No QR Generated
-             </div>
-          )}
+        {/* Ticket Top Section */}
+        <div className="bg-orange-600 p-8 text-center text-white relative">
+          <div className="w-16 h-16 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center mx-auto mb-4 border border-white/30">
+            <CheckCircle size={32} />
+          </div>
+          <h1 className="text-3xl font-heading font-bold mb-1">Darshan Confirmed</h1>
+          <p className="text-orange-100 font-medium">Entry E-Pass Generated</p>
+          
+          {/* Ticket Perforation Left/Right */}
+          <div className="absolute -bottom-4 -left-4 w-8 h-8 bg-ivory rounded-full shadow-inner"></div>
+          <div className="absolute -bottom-4 -right-4 w-8 h-8 bg-ivory rounded-full shadow-inner"></div>
         </div>
 
-        <div className="text-left bg-slate-900 p-4 rounded-lg mb-6">
-          <p className="text-sm text-gray-400">Pass ID</p>
-          <p className="font-mono text-lg mb-3">{booking.qr_code}</p>
+        {/* QR Section */}
+        <div className="p-8 text-center flex flex-col items-center">
+          <div className="bg-white p-4 rounded-2xl border-2 border-slate-50 shadow-inner mb-6">
+            <QRCode value={booking.qr_code || String(id)} size={180} />
+          </div>
+          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-[0.2em] mb-8">Scan at Temple Gate</p>
 
-          <p className="text-sm text-gray-400">Visit Date</p>
-          <p className="text-lg mb-3 font-semibold">
-            {new Date(booking.visit_date).toLocaleDateString("en-IN", {
-              weekday: "long", year: 'numeric', month: 'long', day: 'numeric'
-            })}
-          </p>
+          {/* Ticket Metadata */}
+          <div className="w-full space-y-5 text-left border-t border-dashed border-slate-200 pt-8">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Pass ID</p>
+                <p className="font-mono text-slate-800 font-bold">{id.slice(0, 8)}...</p>
+              </div>
+              <div className="text-right">
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Gate</p>
+                <p className="font-bold text-slate-800">Main Entrance</p>
+              </div>
+            </div>
 
-          <p className="text-sm text-gray-400">Time Slot</p>
-          <p className="text-lg font-semibold">
-            {booking.entry_slots?.start_time} - {booking.entry_slots?.end_time}
-          </p>
+            <div className="flex items-center gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-100">
+               <Calendar className="text-orange-600" size={20} />
+               <div>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Visit Date</p>
+                  <p className="font-bold text-slate-800 leading-none">
+                    {new Date(booking.visit_date).toLocaleDateString("en-IN", { weekday: "short", day: "2-digit", month: "long" })}
+                  </p>
+               </div>
+            </div>
+
+            <div className="flex items-center gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-100">
+               <Clock className="text-orange-600" size={20} />
+               <div>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Time Slot</p>
+                  <p className="font-bold text-slate-800 leading-none">
+                    {booking.entry_slots?.start_time} - {booking.entry_slots?.end_time}
+                  </p>
+               </div>
+            </div>
+          </div>
         </div>
 
-        <Link 
-          to="/dashboard" // Or wherever you want to send them next
-          className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-6 rounded-lg w-full block transition-colors"
-        >
-          View My Dashboard
-        </Link>
+        {/* Footer Navigation */}
+        <div className="p-8 pt-0">
+          <button 
+            onClick={() => navigate("/dashboard")}
+            className="w-full bg-slate-800 hover:bg-slate-700 text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-2 transition-all active:scale-95"
+          >
+            Go to Dashboard <ArrowRight size={18} />
+          </button>
+        </div>
       </div>
     </div>
   );

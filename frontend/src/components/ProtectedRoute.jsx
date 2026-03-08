@@ -3,11 +3,14 @@ import { Navigate, Outlet } from "react-router-dom";
 export default function ProtectedRoute() {
   const token = localStorage.getItem("token");
 
-  // If there is no token, bounce the user to the login page immediately
-  if (!token) {
+  // STRICT CHECK: Catches null, undefined, and accidental "undefined" strings
+  if (!token || token === "undefined" || token === "null" || token.trim() === "") {
+    // Clean up corrupted storage before bouncing
+    localStorage.removeItem("token");
+    localStorage.removeItem("role");
     return <Navigate to="/login" replace />;
   }
 
-  // If the token exists, render whatever child route the user is trying to access
+  // Token is valid, render the requested page
   return <Outlet />;
 }
