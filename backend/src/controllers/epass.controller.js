@@ -7,7 +7,8 @@ import crypto from 'crypto';
  */
 export const createEpassBooking = async (req, res, next) => {
   try {
-    const { slot_id } = req.body;
+    // 🆕 Now accepting eco_fee from the frontend, default to 0 if missing
+    const { slot_id, eco_fee = 0 } = req.body;
     const userId = req.user.id;
 
     if (!slot_id) {
@@ -32,7 +33,8 @@ export const createEpassBooking = async (req, res, next) => {
       });
     }
 
-    const ECO_FEE = 20;
+    // Ensure it's a number
+    const finalEcoFee = Number(eco_fee);
 
     // Insert booking as PENDING without generating the QR yet
     const { data: booking, error } = await supabase
@@ -43,8 +45,8 @@ export const createEpassBooking = async (req, res, next) => {
         visit_date: slot.slot_date,
         status: 'PENDING', // Wait for payment to mark as BOOKED
         payment_status: 'PENDING',
-        eco_fee: ECO_FEE,
-        total_amount: ECO_FEE
+        eco_fee: finalEcoFee,       // 🆕 Dynamic fee
+        total_amount: finalEcoFee   // 🆕 Dynamic fee
       })
       .select()
       .single();

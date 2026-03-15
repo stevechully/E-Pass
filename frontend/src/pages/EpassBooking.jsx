@@ -10,6 +10,9 @@ export default function EpassBooking() {
   const [showPayment, setShowPayment] = useState(false);
   const [pendingBookingId, setPendingBookingId] = useState(null);
   const [selectedDate, setSelectedDate] = useState("");
+  
+  // 🆕 Added Plastic Declaration State
+  const [bringingPlastic, setBringingPlastic] = useState(false);
 
   const navigate = useNavigate();
 
@@ -28,6 +31,7 @@ export default function EpassBooking() {
     }
   }
 
+  // 🆕 Updated initiateBooking logic
   async function initiateBooking() {
     if (!selectedSlot) return;
     const slotToBook = slots.find(s => s.id === selectedSlot);
@@ -38,6 +42,10 @@ export default function EpassBooking() {
     if (!token) return navigate("/login");
 
     setLoading(true);
+    
+    // Calculate fee dynamically
+    const ecoFee = bringingPlastic ? 20 : 0;
+
     try {
       const res = await fetch("http://localhost:5000/api/epass/create-booking", {
         method: "POST",
@@ -45,13 +53,37 @@ export default function EpassBooking() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ slot_id: selectedSlot }),
+        // Send eco_fee to backend
+        body: JSON.stringify({ slot_id: selectedSlot, eco_fee: ecoFee }),
       });
       const data = await res.json();
+      
       if (data.success) {
-        setPendingBookingId(data.booking.id);
-        setSelectedDate(slotToBook.slot_date);
-        setShowPayment(true);
+        const bookingId = data.booking.id;
+        
+        // If they need to pay the eco fee
+        if (ecoFee > 0) {
+          setPendingBookingId(bookingId);
+          setSelectedDate(slotToBook.slot_date);
+          setShowPayment(true);
+        } 
+        // If it's a FREE pass, confirm automatically
+        else {
+          const confirmRes = await fetch("http://localhost:5000/api/epass/confirm-payment", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({ booking_id: bookingId }),
+          });
+          const confirmData = await confirmRes.json();
+          if (confirmData.success) {
+            navigate(`/epass/success/${bookingId}`, { replace: true });
+          } else {
+            alert(confirmData.message || "Failed to generate free pass");
+          }
+        }
       } else {
         alert(data.message || "Failed to initiate booking");
       }
@@ -96,7 +128,7 @@ export default function EpassBooking() {
           </div>
           <h1 className="text-4xl font-heading font-bold text-slate-800 mb-3">Temple E-Pass Booking</h1>
           <p className="text-slate-500 font-medium max-w-lg mx-auto">
-            Secure your entry slot for a peaceful darshan. A small <span className="text-orange-600 font-bold">₹20 Eco Fee</span> helps maintain temple serenity.
+            Secure your entry slot for a peaceful darshan. Help us keep the temple plastic-free 🌿
           </p>
         </div>
 
@@ -146,11 +178,30 @@ export default function EpassBooking() {
               );
             })}
 
+            {/* 🆕 Plastic Declaration Checkbox */}
+            {selectedSlot && (
+              <div className="mt-4 flex items-center gap-3 bg-white p-5 rounded-2xl border border-slate-200 shadow-sm animate-in fade-in slide-in-from-bottom-2 duration-300">
+                <input
+                  type="checkbox"
+                  id="plastic-check"
+                  checked={bringingPlastic}
+                  onChange={(e) => setBringingPlastic(e.target.checked)}
+                  className="w-5 h-5 accent-orange-500 cursor-pointer rounded"
+                />
+                <label htmlFor="plastic-check" className="text-slate-700 font-medium cursor-pointer select-none">
+                  I will be bringing plastic items <span className="text-orange-600 font-bold">(Eco Fee ₹20 applies)</span>
+                </label>
+              </div>
+            )}
+
             {/* Sticky Action Button */}
-            <div className="sticky bottom-8 mt-10 p-2 bg-white/80 backdrop-blur-md rounded-3xl border border-gold/10 shadow-2xl flex items-center gap-4">
+            <div className="sticky bottom-8 mt-6 p-2 bg-white/80 backdrop-blur-md rounded-3xl border border-gold/10 shadow-2xl flex items-center gap-4">
                <div className="flex-1 pl-6">
                  <p className="text-xs font-bold text-slate-400 uppercase">Contribution</p>
-                 <p className="text-2xl font-heading font-bold text-slate-800">₹20.00</p>
+                 <p className="text-2xl font-heading font-bold text-slate-800">
+                    {/* 🆕 Dynamic Amount */}
+                    {bringingPlastic ? "₹20.00" : "Free"}
+                 </p>
                </div>
                <button
                   disabled={!selectedSlot || loading}
@@ -161,7 +212,12 @@ export default function EpassBooking() {
                       : "bg-orange-600 hover:bg-orange-500 text-white glow-saffron"
                     }`}
                 >
-                  {loading ? "Verifying..." : "Confirm & Book"} <ArrowRight size={20} />
+                  {/* 🆕 Dynamic Button Text */}
+                  {loading 
+                    ? "Processing..." 
+                    : bringingPlastic 
+                      ? "Pay ₹20 & Book" 
+                      : "Book Free E-Pass"} <ArrowRight size={20} />
                </button>
             </div>
           </div>
@@ -175,8 +231,8 @@ export default function EpassBooking() {
           puja={{ puja_name: "Temple Entry E-Pass" }} 
           bookingDate={selectedDate}
           selectedAddons={[]}
-          ecoFee={20}
-          totalAmount={20}
+          ecoFee={bringingPlastic ? 20 : 0} 
+          totalAmount={bringingPlastic ? 20 : 0} 
           isEpass={true}
           bookingId={pendingBookingId}
           onSuccess={handlePaymentSuccess}
