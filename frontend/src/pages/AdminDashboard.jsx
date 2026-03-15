@@ -60,7 +60,7 @@ export default function AdminDashboard() {
           <TrendingUp size={32} />
         </div>
         <div>
-          <h1 className="text-4xl font-heading font-black text-slate-800 tracking-tight">Admin Analytics</h1>
+          <h1 className="text-4xl font-heading font-black text-slate-800 tracking-tight">Sri Krishnaswami Temple</h1>
           <p className="text-slate-500 font-medium mt-1">High-level overview of temple operations and revenue.</p>
         </div>
       </div>

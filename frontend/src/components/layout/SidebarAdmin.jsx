@@ -35,7 +35,7 @@ export default function SidebarAdmin() {
         <div className="flex items-center gap-2 mb-8 text-orange-600">
            <ShieldCheck size={32} />
            <h2 className="font-heading text-3xl font-bold tracking-tight">
-             Temple <span className="text-xl">Admin</span>
+             Darshan Pass <span className="text-xl">Admin</span>
            </h2>
         </div>
 

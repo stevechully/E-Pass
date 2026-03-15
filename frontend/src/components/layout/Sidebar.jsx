@@ -52,7 +52,7 @@ export default function Sidebar() {
         <div className="flex items-center gap-2 mb-8 text-orange-600">
            {user?.role === "ADMIN" ? <ShieldCheck size={32} /> : <Flame size={32} />}
            <h2 className="font-heading text-3xl font-bold tracking-tight">
-             Temple {user?.role === "ADMIN" && <span className="text-xl">Admin</span>}
+             Darshan Pass {user?.role === "ADMIN" && <span className="text-xl">Admin</span>}
            </h2>
         </div>
 

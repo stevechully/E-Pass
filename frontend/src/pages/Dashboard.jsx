@@ -43,7 +43,7 @@ export default function Dashboard() {
       {/* HEADER */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-4xl font-heading text-warmgray font-bold">Temple Portal</h1>
+          <h1 className="text-4xl font-heading text-warmgray font-bold">Sri Krishnaswami Temple</h1>
           <p className="text-warmgray/60 mt-1">Welcome back! Here is your spiritual schedule today.</p>
         </div>
         
