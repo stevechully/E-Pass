@@ -7,7 +7,9 @@ const API = import.meta.env.VITE_API_URL;
 
 export default function PaymentModal({
   isOpen, onClose, puja, bookingDate, selectedAddons, ecoFee, totalAmount,
-  bookingId, isEpass, moduleName, onSuccess
+  bookingId, isEpass, moduleName, onSuccess,
+  devoteeName, // ✅ New Prop
+  nakshathram  // ✅ New Prop
 }) {
 
   const [loading, setLoading] = useState(false);
@@ -44,7 +46,9 @@ export default function PaymentModal({
             booking_date: bookingDate,
             selected_addons: selectedAddons,
             eco_fee: ecoFee,
-            total_amount: totalAmount
+            total_amount: totalAmount,
+            devotee_name: devoteeName, // ✅ Send to Backend
+            nakshathram: nakshathram   // ✅ Send to Backend
           },
           authHeader
         );
@@ -61,7 +65,7 @@ export default function PaymentModal({
           module: moduleName || (isEpass ? "EPASS" : "VAZHIPADU"),
           booking_id: finalBookingId,
           amount: totalAmount,
-          payment_method: "UPI" // ✅ Strictly sending UPI
+          payment_method: "UPI"
         },
         authHeader
       );
@@ -112,28 +116,15 @@ export default function PaymentModal({
 
         </div>
 
-        {/* ✅ Always visible UPI/GPay QR Section */}
+        {/* GPay QR Section */}
         <div className="mb-6 text-center">
-          
           <p className="font-bold mb-1 text-sm text-slate-800">Pay using Google Pay</p>
-          <p className="text-sm text-slate-500 mb-4">
-            Scan using any UPI app
-          </p>
-
-          <img
-            src="/gpay-logo.png"
-            alt="GPay"
-            className="h-5 mx-auto mb-3 object-contain"
-            onError={(e) => e.target.style.display = 'none'} // Hides gracefully if you don't have the image yet
-          />
-
+          <p className="text-sm text-slate-500 mb-4">Scan using any UPI app</p>
+          <img src="/gpay-logo.png" alt="GPay" className="h-5 mx-auto mb-3 object-contain" onError={(e) => e.target.style.display = 'none'} />
           <div className="bg-white p-4 inline-block rounded-xl border shadow-sm">
             <QRCode value={upiString} size={160} />
           </div>
-
-          <p className="text-xs font-mono font-semibold text-slate-400 mt-4 tracking-wider">
-            UPI: templeportal@upi
-          </p>
+          <p className="text-xs font-mono font-semibold text-slate-400 mt-4 tracking-wider">UPI: templeportal@upi</p>
 
           <button
             onClick={processPayment}
@@ -142,7 +133,6 @@ export default function PaymentModal({
           >
             {loading ? <Loader2 className="animate-spin" size={20}/> : "I have paid"}
           </button>
-
         </div>
 
         <button

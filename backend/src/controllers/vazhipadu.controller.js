@@ -1,8 +1,6 @@
 import { supabase } from "../config/supabase.js";
 
-// ==========================================
-// 🟢 A) CHECK AVAILABILITY CONTROLLER
-// ==========================================
+// ... (checkAvailability function remains unchanged) ...
 export const checkAvailability = async (req, res, next) => {
   try {
     const { puja_id, booking_date } = req.body;
@@ -16,7 +14,6 @@ export const checkAvailability = async (req, res, next) => {
       return res.status(400).json({ message: "Past date booking not allowed" });
     }
 
-    // Fetch the service details
     const { data: puja, error } = await supabase
       .from("vazhipadu_services")
       .select("*")
@@ -27,9 +24,7 @@ export const checkAvailability = async (req, res, next) => {
       return res.status(404).json({ message: "Invalid Puja" });
     }
 
-    // ✅ Logic Branch: Special vs Regular
     if (puja.puja_type === "SPECIAL") {
-      // For Special Poojas, the "Truth" is in the pooja_calendar available_slots column
       const { data: calendarEntry } = await supabase
         .from('pooja_calendar')
         .select('available_slots')
@@ -48,7 +43,6 @@ export const checkAvailability = async (req, res, next) => {
       });
 
     } else {
-      // Regular Puja: Check global daily capacity by counting existing bookings
       const { count } = await supabase
         .from("vazhipadu_bookings")
         .select("*", { count: "exact", head: true })
@@ -76,8 +70,22 @@ export const createBooking = async (req, res, next) => {
       return res.status(401).json({ success: false, message: "Unauthorized" });
     }
 
-    const { puja_id, booking_date, selected_addons = [], eco_fee = 0 } = req.body;
+    // ✅ Extracted new Devotee fields
+    const { 
+      puja_id, 
+      booking_date, 
+      selected_addons = [], 
+      eco_fee = 0,
+      devotee_name, 
+      nakshathram 
+    } = req.body;
+    
     const user_id = req.user.id;
+
+    // ✅ Validation check for new fields
+    if (!devotee_name || !nakshathram) {
+      return res.status(400).json({ message: "Devotee name and nakshathram required" });
+    }
 
     const { data: puja, error: pujaError } = await supabase
       .from("vazhipadu_services")
@@ -91,9 +99,7 @@ export const createBooking = async (req, res, next) => {
 
     let calendarId = null;
 
-    // ✅ Capacity Validation
     if (puja.puja_type === "SPECIAL") {
-      // Verify against pooja_calendar table
       const { data: slot, error: slotError } = await supabase
         .from('pooja_calendar')
         .select('id, available_slots')
@@ -107,7 +113,6 @@ export const createBooking = async (req, res, next) => {
       }
       calendarId = slot.id;
     } else {
-      // Verify against regular daily capacity
       const { count } = await supabase
         .from("vazhipadu_bookings")
         .select("*", { count: "exact", head: true })
@@ -120,7 +125,6 @@ export const createBooking = async (req, res, next) => {
       }
     }
 
-    // Amount Calculation
     let addonAmount = 0;
     if (selected_addons.length > 0) {
       const { data: addons } = await supabase
@@ -133,14 +137,12 @@ export const createBooking = async (req, res, next) => {
     const baseAmount = Number(puja.price);
     const totalAmount = baseAmount + addonAmount + Number(eco_fee);
 
-    // ✅ Atomic Slot Decrement (For Special Poojas)
     if (calendarId) {
       const { error: decError } = await supabase.rpc('decrement_available_slots', { 
         row_id: calendarId 
       });
       
       if (decError) {
-        // Fallback: update manually only if RPC is missing
         const { data: current } = await supabase.from('pooja_calendar').select('available_slots').eq('id', calendarId).single();
         if (current.available_slots > 0) {
           await supabase.from('pooja_calendar').update({ available_slots: current.available_slots - 1 }).eq('id', calendarId);
@@ -148,13 +150,15 @@ export const createBooking = async (req, res, next) => {
       }
     }
 
-    // Create the Booking Record
+    // ✅ Insert Booking Record WITH Devotee Details
     const { data: booking, error: bookingError } = await supabase
       .from("vazhipadu_bookings")
       .insert([{
           user_id,
           puja_id,
           booking_date,
+          devotee_name,   // Added here
+          nakshathram,    // Added here
           status: "PENDING",
           base_amount: baseAmount,
           addon_amount: addonAmount,
@@ -165,7 +169,6 @@ export const createBooking = async (req, res, next) => {
 
     if (bookingError) throw bookingError;
 
-    // Insert booking addons
     if (selected_addons.length > 0) {
       const addonInsertData = selected_addons.map((id) => ({
         booking_id: booking.id,
@@ -186,9 +189,7 @@ export const createBooking = async (req, res, next) => {
   }
 };
 
-// ==========================================
-// 🟢 C) GET YEARLY CALENDAR
-// ==========================================
+// ... (Rest of your controller remains exactly identical to what you sent)
 export const getYearlyCalendar = async (req, res, next) => {
   try {
     const { year } = req.params;
@@ -209,9 +210,6 @@ export const getYearlyCalendar = async (req, res, next) => {
   }
 };
 
-// ==========================================
-// 🟢 D) GET MY BOOKINGS
-// ==========================================
 export const getMyVazhipaduBookings = async (req, res, next) => {
   try {
     if (!req.user || !req.user.id) {
@@ -235,9 +233,6 @@ export const getMyVazhipaduBookings = async (req, res, next) => {
   }
 };
 
-// ==========================================
-// 🟢 E) CANCEL & REFUND
-// ==========================================
 export const cancelVazhipaduBooking = async (req, res, next) => {
   try {
     if (!req.user || !req.user.id) {
@@ -263,7 +258,6 @@ export const cancelVazhipaduBooking = async (req, res, next) => {
     // Update status
     await supabase.from('vazhipadu_bookings').update({ status: 'CANCELLED' }).eq('id', bookingId);
 
-    // ✅ If it was a SPECIAL pooja, we should increment available_slots back in calendar
     const { data: puja } = await supabase.from('vazhipadu_services').select('puja_type').eq('id', booking.puja_id).single();
     if (puja?.puja_type === 'SPECIAL') {
         await supabase.rpc('increment_available_slots', { 
@@ -298,9 +292,6 @@ export const cancelVazhipaduBooking = async (req, res, next) => {
   }
 };
 
-// ==========================================
-// 🟢 F) ADMIN: VERIFY QR
-// ==========================================
 export const verifyVazhipaduQR = async (req, res, next) => {
   try {
     const { qr_code } = req.body;
@@ -325,9 +316,6 @@ export const verifyVazhipaduQR = async (req, res, next) => {
   }
 };
 
-// ==========================================
-// 🟢 G) PUBLIC: GET SERVICES & ADDONS
-// ==========================================
 export const getAllVazhipaduServices = async (req, res, next) => {
   try {
     const { type } = req.query; 

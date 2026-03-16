@@ -5,17 +5,28 @@ import { getSpecialPoojaDates } from "../services/calendarService";
 import axios from "axios";
 import PaymentModal from "../components/PaymentModal";
 import { 
-  Sun, // Replaced CalendarIcon
-  Flower, // Replaced CheckCircle for spiritual checkmarks
-  Sparkles, // Replaced ShieldCheck for confirmation
+  Sun, 
+  Flower, 
+  Sparkles, 
   CheckCircle, 
   AlertCircle, 
   ArrowLeft, 
   ArrowRight, 
-  Info 
+  Info,
+  UserRound // ✅ Added icon for Devotee
 } from "lucide-react";
 
 const API = import.meta.env.VITE_API_URL;
+
+// ✅ HARDCODED NAKSHATHRAMS (Option A)
+const NAKSHATHRAMS = [
+  "Ashwini", "Bharani", "Krittika", "Rohini", "Mrigashira", "Ardra",
+  "Punarvasu", "Pushya", "Ashlesha", "Magha", "Purva Phalguni",
+  "Uttara Phalguni", "Hasta", "Chitra", "Swati", "Vishakha",
+  "Anuradha", "Jyeshtha", "Mula", "Purva Ashadha", "Uttara Ashadha",
+  "Shravana", "Dhanishta", "Shatabhisha", "Purva Bhadrapada",
+  "Uttara Bhadrapada", "Revati"
+];
 
 const VazhipaduBooking = () => {
   const { id } = useParams();
@@ -34,6 +45,10 @@ const VazhipaduBooking = () => {
   const [addons, setAddons] = useState([]);
   const [selectedAddons, setSelectedAddons] = useState([]);
   const [ecoFee, setEcoFee] = useState(0);
+
+  // ✅ New Devotee State
+  const [devoteeName, setDevoteeName] = useState("");
+  const [nakshathram, setNakshathram] = useState("");
 
   useEffect(() => {
     fetchPujaAndDates();
@@ -111,10 +126,8 @@ const VazhipaduBooking = () => {
   );
 
   return (
-    // ✅ Step 1: Spiritual Mandala Background
     <div className="min-h-screen mandala-bg text-slate-800 dark:text-warmGray p-4 md:p-10 relative font-sans">
       
-      {/* 🧭 Header & Breadcrumb */}
       <div className="max-w-4xl mx-auto mb-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
            <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-slate-500 hover:text-saffron transition-colors mb-2 text-sm font-bold tracking-wide">
@@ -126,7 +139,6 @@ const VazhipaduBooking = () => {
            </p>
         </div>
         
-        {/* ✅ Step 4: Upgraded Step Indicator */}
         <div className="flex items-center gap-3 bg-white dark:bg-charcoal p-2 rounded-2xl border border-gold/20 shadow-sm self-start">
           {[1, 2, 3].map((num) => (
             <div key={num} className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all ${step >= num ? "bg-saffron text-white shadow-md" : "bg-slate-100 dark:bg-warmGray/20 text-slate-400"}`}>
@@ -138,12 +150,10 @@ const VazhipaduBooking = () => {
 
       <div className="max-w-4xl mx-auto grid lg:grid-cols-3 gap-8">
         
-        {/* 📋 Main Section */}
         <div className="lg:col-span-2 space-y-6">
           
           {/* STEP 1: DATE SELECTION */}
           {step === 1 && (
-            // ✅ Step 2: Clean White Cards
             <div className="bg-white dark:bg-charcoal p-8 rounded-3xl border border-gold/10 shadow-lg animate-in fade-in slide-in-from-bottom-4 duration-500">
               <div className="flex items-center gap-3 mb-8">
                 <Sun className="text-saffron" size={28} />
@@ -160,7 +170,6 @@ const VazhipaduBooking = () => {
                         onClick={() => handleDateChange(item.pooja_date)}
                         className={`group p-5 text-left rounded-2xl border transition-all relative overflow-hidden ${
                           bookingDate === item.pooja_date
-                            // ✅ Step 3: Saffron Theme applied
                             ? "bg-saffron/10 border-saffron ring-2 ring-saffron/20"
                             : "bg-slate-50 dark:bg-gray-900/40 border-slate-200 hover:border-saffron/50"
                         } ${item.available_slots <= 0 ? "opacity-40 grayscale cursor-not-allowed" : ""}`}
@@ -214,11 +223,12 @@ const VazhipaduBooking = () => {
             </div>
           )}
 
-          {/* STEP 2: ADD-ONS */}
+          {/* STEP 2: ADD-ONS & DEVOTEE DETAILS */}
           {step === 2 && (
             <div className="bg-white dark:bg-charcoal p-8 rounded-3xl border border-gold/10 shadow-lg animate-in fade-in slide-in-from-right-4 duration-500">
               <h2 className="text-2xl font-heading font-bold mb-8 text-slate-800 dark:text-white">Personalize Your Offering</h2>
-              <div className="grid gap-4">
+              
+              <div className="grid gap-4 mb-10">
                 {addons.map(addon => (
                   <label
                     key={addon.id}
@@ -245,6 +255,44 @@ const VazhipaduBooking = () => {
                 ))}
               </div>
 
+              {/* ✅ NEW: DEVOTEE DETAILS SECTION */}
+              <div className="pt-8 border-t border-slate-100">
+                <div className="flex items-center gap-2 mb-6">
+                  <UserRound size={20} className="text-saffron" />
+                  <label className="text-sm font-bold text-slate-800 uppercase tracking-widest">
+                    Devotee Details (Required)
+                  </label>
+                </div>
+
+                <div className="grid sm:grid-cols-2 gap-4">
+                  {/* Devotee Name */}
+                  <input
+                    type="text"
+                    placeholder="Devotee Name"
+                    value={devoteeName}
+                    onChange={(e)=>setDevoteeName(e.target.value)}
+                    className="p-4 rounded-2xl bg-slate-50 border border-slate-200 focus:border-saffron focus:ring-2 focus:ring-saffron/20 focus:outline-none font-bold text-slate-800 transition-all"
+                  />
+
+                  {/* Nakshathram Dropdown */}
+                  <select
+                    value={nakshathram}
+                    onChange={(e)=>setNakshathram(e.target.value)}
+                    className={`p-4 rounded-2xl bg-slate-50 border border-slate-200 focus:border-saffron focus:ring-2 focus:ring-saffron/20 focus:outline-none font-bold transition-all ${!nakshathram ? "text-slate-400" : "text-slate-800"}`}
+                  >
+                    <option value="" disabled className="text-slate-400">Select Nakshathram</option>
+                    {NAKSHATHRAMS.map(n => (
+                      <option key={n} value={n} className="text-slate-800">{n}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <p className="text-xs text-slate-400 mt-3 font-medium">
+                  The pooja will be performed on behalf of this devotee.
+                </p>
+              </div>
+
+              {/* ECO FEE SECTION */}
               <div className="mt-10 pt-8 border-t border-slate-100">
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-4">Support Temple Environment (Eco Fee)</label>
                 <div className="relative max-w-xs">
@@ -255,7 +303,7 @@ const VazhipaduBooking = () => {
                      value={ecoFee || ""}
                      placeholder="Optional Contribution"
                      onChange={(e) => setEcoFee(Number(e.target.value))}
-                     className="w-full p-4 pl-10 rounded-2xl bg-slate-50 border border-slate-200 focus:border-saffron focus:outline-none font-bold text-slate-800"
+                     className="w-full p-4 pl-10 rounded-2xl bg-slate-50 border border-slate-200 focus:border-saffron focus:outline-none font-bold text-slate-800 transition-all"
                    />
                 </div>
               </div>
@@ -279,6 +327,17 @@ const VazhipaduBooking = () => {
                     <span className="text-slate-500 font-bold">Date</span>
                     <span className="font-black text-slate-800">{new Date(bookingDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })}</span>
                   </div>
+                  
+                  {/* ✅ NEW: DEVOTEE IN REVIEW */}
+                  <div className="flex justify-between items-center py-2 border-t border-slate-200">
+                    <span className="text-slate-500 font-bold">Devotee Name</span>
+                    <span className="font-black text-slate-800">{devoteeName}</span>
+                  </div>
+                  <div className="flex justify-between items-center py-2 border-t border-slate-200">
+                    <span className="text-slate-500 font-bold">Nakshathram</span>
+                    <span className="font-black text-slate-800">{nakshathram}</span>
+                  </div>
+
                   {selectedAddons.length > 0 && (
                     <div className="flex justify-between items-start py-2 border-t border-slate-200">
                       <span className="text-slate-500 font-bold">Add-ons</span>
@@ -289,20 +348,17 @@ const VazhipaduBooking = () => {
                   )}
                </div>
 
-               {/* ✅ Step 7: Saffron Glow Payment Section */}
                <div className="mt-10 flex flex-col sm:flex-row items-center gap-6 bg-saffron/5 p-6 rounded-3xl border border-saffron/20">
                   <div className="flex-1 text-center sm:text-left">
                      <p className="text-xs text-saffron font-black uppercase tracking-widest mb-1">Total Secure Payment</p>
                      <p className="text-5xl font-heading font-bold text-slate-800">₹{calculateTotal()}</p>
                   </div>
-                  {/* ✅ Step 6: Upgraded Pay Button */}
-                  {/* ✅ Step 6: Upgraded Pay Button (Strict local check removed) */}
-<button 
-  onClick={() => setShowPayment(true)} 
-  className="w-full sm:w-auto px-10 py-5 bg-saffron hover:bg-orange-600 text-white font-bold rounded-2xl shadow-md glow-saffron transition-all active:scale-95 text-lg"
->
-  Proceed to Pay
-</button>
+                  <button 
+                    onClick={() => setShowPayment(true)} 
+                    className="w-full sm:w-auto px-10 py-5 bg-saffron hover:bg-orange-600 text-white font-bold rounded-2xl shadow-md glow-saffron transition-all active:scale-95 text-lg"
+                  >
+                    Proceed to Pay
+                  </button>
                </div>
             </div>
           )}
@@ -310,7 +366,6 @@ const VazhipaduBooking = () => {
 
         {/* 💳 Sidebar Summary */}
         <div className="space-y-6">
-          {/* ✅ Step 5: Improved Booking Progress Sidebar */}
           <div className="bg-white dark:bg-charcoal p-6 rounded-3xl border border-gold/10 shadow-lg">
              <h3 className="text-xs font-black uppercase tracking-widest text-slate-400 mb-6">Booking Progress</h3>
              <div className="space-y-6">
@@ -341,7 +396,17 @@ const VazhipaduBooking = () => {
             )}
             {step === 2 && (
                <>
-                 <button onClick={() => setStep(3)} className="w-full py-5 bg-saffron hover:bg-orange-600 text-white font-bold rounded-2xl flex items-center justify-center gap-2 transition-all shadow-sm">
+                 <button 
+                   onClick={() => {
+                     // ✅ Validation Logic Added
+                     if (!devoteeName.trim() || !nakshathram) {
+                       alert("Please provide the Devotee Name and Nakshathram to continue.");
+                       return;
+                     }
+                     setStep(3);
+                   }} 
+                   className="w-full py-5 bg-saffron hover:bg-orange-600 text-white font-bold rounded-2xl flex items-center justify-center gap-2 transition-all shadow-sm"
+                 >
                     Review Summary <ArrowRight size={18} />
                  </button>
                  <button onClick={() => setStep(1)} className="w-full py-4 text-slate-500 hover:text-saffron font-bold transition-colors">Go Back</button>
@@ -362,6 +427,9 @@ const VazhipaduBooking = () => {
         selectedAddons={selectedAddons}
         ecoFee={ecoFee}
         totalAmount={calculateTotal()}
+        // ✅ Added New Props
+        devoteeName={devoteeName}
+        nakshathram={nakshathram}
         onSuccess={(bookingId) => navigate(`/vazhipadu/success/${bookingId}`)}
       />
     </div>
