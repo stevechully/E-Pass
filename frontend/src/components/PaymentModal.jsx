@@ -11,12 +11,10 @@ export default function PaymentModal({
 }) {
 
   const [loading, setLoading] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState("CASH");
 
   if (!isOpen) return null;
 
-  const upiString =
-    `upi://pay?pa=templeportal@upi&pn=TemplePortal&am=${totalAmount}&cu=INR`;
+  const upiString = `upi://pay?pa=templeportal@upi&pn=TemplePortal&am=${totalAmount}&cu=INR`;
 
   const processPayment = async () => {
     try {
@@ -63,7 +61,7 @@ export default function PaymentModal({
           module: moduleName || (isEpass ? "EPASS" : "VAZHIPADU"),
           booking_id: finalBookingId,
           amount: totalAmount,
-          payment_method: paymentMethod
+          payment_method: "UPI" // ✅ Strictly sending UPI
         },
         authHeader
       );
@@ -114,81 +112,43 @@ export default function PaymentModal({
 
         </div>
 
-        {/* Payment Method Selection */}
-        <div className="mb-6">
+        {/* ✅ Always visible UPI/GPay QR Section */}
+        <div className="mb-6 text-center">
+          
+          <p className="font-bold mb-1 text-sm text-slate-800">Pay using Google Pay</p>
+          <p className="text-sm text-slate-500 mb-4">
+            Scan using any UPI app
+          </p>
 
-          <p className="font-bold mb-3 text-sm">Select Payment Method</p>
+          <img
+            src="/gpay-logo.png"
+            alt="GPay"
+            className="h-5 mx-auto mb-3 object-contain"
+            onError={(e) => e.target.style.display = 'none'} // Hides gracefully if you don't have the image yet
+          />
 
-          <div className="flex gap-3">
-
-            <button
-              onClick={() => setPaymentMethod("CASH")}
-              className={`flex-1 border rounded-xl py-3 font-semibold
-              ${paymentMethod === "CASH"
-                ? "border-orange-500 bg-orange-50"
-                : "border-slate-200"}`}
-            >
-              Cash
-            </button>
-
-            <button
-              onClick={() => setPaymentMethod("GPAY")}
-              className={`flex-1 border rounded-xl py-3 font-semibold
-              ${paymentMethod === "GPAY"
-                ? "border-orange-500 bg-orange-50"
-                : "border-slate-200"}`}
-            >
-              GPay
-            </button>
-
+          <div className="bg-white p-4 inline-block rounded-xl border shadow-sm">
+            <QRCode value={upiString} size={160} />
           </div>
 
-        </div>
+          <p className="text-xs font-mono font-semibold text-slate-400 mt-4 tracking-wider">
+            UPI: templeportal@upi
+          </p>
 
-        {/* GPay QR Section */}
-        {paymentMethod === "GPAY" && (
-          <div className="mb-6 text-center">
-
-            <p className="text-sm text-slate-500 mb-3">
-              Scan using Google Pay
-            </p>
-
-            <div className="bg-white p-4 inline-block rounded-xl border">
-              <QRCode value={upiString} size={180} />
-            </div>
-
-            <p className="text-xs text-slate-400 mt-3">
-              UPI: templeportal@upi
-            </p>
-
-            <button
-              onClick={processPayment}
-              disabled={loading}
-              className="w-full mt-5 bg-green-600 hover:bg-green-500 text-white font-bold py-3 rounded-xl"
-            >
-              {loading ? <Loader2 className="animate-spin" size={20}/> : "I have paid"}
-            </button>
-
-          </div>
-        )}
-
-        {/* Cash Button */}
-        {paymentMethod === "CASH" && (
           <button
             onClick={processPayment}
             disabled={loading}
-            className="w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-4 rounded-xl shadow-md"
+            className="w-full mt-6 flex items-center justify-center bg-green-600 hover:bg-green-500 text-white font-bold py-3.5 rounded-xl shadow-md transition-all active:scale-95 disabled:opacity-70"
           >
-            {loading
-              ? <Loader2 className="animate-spin"/>
-              : `Pay ₹${totalAmount}`}
+            {loading ? <Loader2 className="animate-spin" size={20}/> : "I have paid"}
           </button>
-        )}
+
+        </div>
 
         <button
           onClick={onClose}
           disabled={loading}
-          className="w-full mt-3 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-3 rounded-xl"
+          className="w-full mt-2 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-3 rounded-xl transition-colors disabled:opacity-70"
         >
           Cancel
         </button>
