@@ -1,12 +1,18 @@
 import { useEffect, useState } from "react";
 import { QRCodeCanvas } from "qrcode.react";
 import { jsPDF } from "jspdf";
+import toast from "react-hot-toast"; // ✅ Added Toast
 import { cancelBooking, requestRefund } from "../services/refundService";
-import { Calendar, Clock, Utensils, Trash2, Download, Ticket } from "lucide-react";
+import ConfirmModal from "../components/ui/ConfirmModal"; // ✅ Added Modal
+import { Calendar, Clock, Utensils, Trash2, Download } from "lucide-react";
 
 export default function MyFoodBookings() {
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  // ✅ Modal States
+  const [confirmBooking, setConfirmBooking] = useState(null);
+  const [processingCancel, setProcessingCancel] = useState(false);
 
   useEffect(() => {
     fetchBookings();
@@ -14,65 +20,79 @@ export default function MyFoodBookings() {
 
   async function fetchBookings() {
     const token = localStorage.getItem("token");
-
     try {
       const res = await fetch("http://localhost:5000/api/food/my", {
         headers: { Authorization: `Bearer ${token}` }
       });
-
       const data = await res.json();
       if (data.success) setBookings(data.bookings);
     } catch {
-      alert("Failed to load food bookings");
+      toast.error("Failed to load food bookings");
     } finally {
       setLoading(false);
     }
   }
 
-  // Unified Cancel + Refund Flow for Paid Meals
-  const handleCancelAndRefund = async (booking, type) => {
-    if (!window.confirm(`Are you sure you want to cancel this ${type.toLowerCase()} and request a refund?`)) return;
+  // ✅ Unified Cancellation Logic (Fired by Modal)
+  const executeCancellation = async () => {
+    if (!confirmBooking) return;
+    setProcessingCancel(true);
+
+    const isFree = confirmBooking.food_slots?.meal_type === "FREE";
 
     try {
-      await cancelBooking(booking.id, type);
-
-      await requestRefund({
-        booking_id: booking.id,
-        booking_type: type,
-        amount: booking.total_amount || booking.amount || 0,
-        reason: `User cancelled ${type.toLowerCase()} from dashboard`
-      });
-
-      alert(`${type} cancelled and refund requested successfully! ✅`);
+      if (isFree) {
+        // FREE MEAL -> Direct Cancel
+        const token = localStorage.getItem("token");
+        const res = await fetch(`http://localhost:5000/api/food/cancel/${confirmBooking.id}`, {
+          method: "POST", // Assumes your food routes follow the same pattern
+          headers: { 
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}` 
+          }
+        });
+        const data = await res.json();
+        if (data.success) {
+          toast.success("Free meal cancelled successfully! ✅");
+        } else {
+          throw new Error(data.message || "Failed to cancel meal");
+        }
+      } else {
+        // PAID MEAL -> Refund Flow
+        await cancelBooking(confirmBooking.id, "FOOD");
+        await requestRefund({
+          booking_id: confirmBooking.id,
+          booking_type: "FOOD",
+          amount: confirmBooking.total_amount || confirmBooking.amount || 0,
+          reason: "User cancelled food booking from dashboard"
+        });
+        toast.success("Paid meal cancelled and refund requested! ✅");
+      }
       fetchBookings();
     } catch (err) {
-      console.error(err);
-      alert(err.response?.data?.message || "Error processing cancellation.");
+      toast.error(err.response?.data?.message || err.message || "Error processing cancellation.");
+    } finally {
+      setProcessingCancel(false);
+      setConfirmBooking(null); // Close modal
     }
   };
 
   function downloadReceipt(b) {
     const doc = new jsPDF();
-
     doc.setFontSize(22);
     doc.text("FOOD BOOKING RECEIPT", 105, 20, { align: "center" });
-
     doc.line(20, 25, 190, 25);
-
     doc.setFontSize(14);
     doc.text("MEAL DETAILS", 20, 40);
-
     doc.setFontSize(12);
     doc.text(`Meal Type: ${b.food_slots.meal_type}`, 20, 50);
     doc.text(`Date: ${new Date(b.food_slots.slot_date).toDateString()}`, 20, 60);
     doc.text(`Time: ${b.food_slots.start_time} - ${b.food_slots.end_time}`, 20, 70);
     doc.text(`Status: ${b.status}`, 20, 80);
-
     doc.text("RESERVATION CODE:", 20, 100);
     doc.setFont("courier", "bold");
     doc.setFontSize(16);
     doc.text(b.qr_code || "N/A", 20, 110);
-
     doc.save(`FoodBooking_${b.qr_code}.pdf`);
   }
 
@@ -86,7 +106,6 @@ export default function MyFoodBookings() {
     <div className="text-slate-800 flex justify-center px-2 sm:px-6 py-10 animate-in fade-in duration-500">
       <div className="w-full max-w-3xl">
 
-        {/* Header */}
         <div className="mb-10 text-center">
           <h1 className="text-4xl font-heading font-bold text-slate-800 mb-2">My Meal Coupons</h1>
           <p className="text-slate-500 font-medium">View your active dining hall bookings and manage cancellations.</p>
@@ -107,14 +126,12 @@ export default function MyFoodBookings() {
               return (
                 <div key={booking.id} className={`bg-white border border-amber-100 rounded-[2rem] p-8 shadow-xl relative overflow-hidden ${isCancelled ? 'opacity-50 grayscale' : ''}`}>
                   
-                  {/* Status Badge */}
                   <div className="absolute top-6 right-8">
                      <span className={`px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-widest ${booking.status === "BOOKED" ? "bg-emerald-50 text-emerald-600" : "bg-rose-50 text-rose-600"}`}>
                        {booking.status}
                      </span>
                   </div>
 
-                  {/* Booking Info */}
                   <div className="flex items-start gap-4 mb-8">
                     <div className={`p-3 rounded-2xl ${isFree ? 'bg-emerald-50 text-emerald-600' : 'bg-orange-50 text-orange-600'}`}>
                       <Utensils size={24} />
@@ -132,7 +149,6 @@ export default function MyFoodBookings() {
                     </div>
                   </div>
 
-                  {/* QR Code Container */}
                   {!isCancelled && (
                     <div className="mt-4 p-8 bg-slate-50 rounded-3xl flex flex-col items-center max-w-sm mx-auto border border-slate-100 shadow-inner">
                       {booking.qr_code ? (
@@ -144,29 +160,14 @@ export default function MyFoodBookings() {
                     </div>
                   )}
 
-                  {/* Action Buttons */}
                   <div className="flex flex-col sm:flex-row gap-4 mt-8">
                     <button onClick={() => downloadReceipt(booking)} className="flex-1 bg-slate-800 hover:bg-slate-700 text-white py-4 rounded-2xl font-bold transition-all flex items-center justify-center gap-2 shadow-md">
                       <Download size={18} /> Download PDF
                     </button>
 
-                    {/* ✅ Dynamic Cancel / Refund Button */}
                     {!isCancelled && (
                       <button 
-                        onClick={() => {
-                          if (isFree) {
-                            if (window.confirm("Are you sure you want to cancel this free meal?")) {
-                              cancelBooking(booking.id, "FOOD")
-                                .then(() => {
-                                  alert("Meal cancelled successfully! ✅");
-                                  fetchBookings();
-                                })
-                                .catch(() => alert("Error processing cancellation."));
-                            }
-                          } else {
-                            handleCancelAndRefund(booking, "FOOD");
-                          }
-                        }}
+                        onClick={() => setConfirmBooking(booking)} // ✅ Trigger Modal Instead of Alert
                         className="flex-1 bg-rose-50 hover:bg-rose-100 text-rose-600 py-4 rounded-2xl font-bold transition-all flex items-center justify-center gap-2 border border-rose-100"
                       >
                         <Trash2 size={18} /> 
@@ -174,12 +175,24 @@ export default function MyFoodBookings() {
                       </button>
                     )}
                   </div>
-
                 </div>
               );
             })}
           </div>
         )}
+
+        {/* ✅ The Reusable Confirmation Modal */}
+        <ConfirmModal
+          isOpen={!!confirmBooking}
+          title={confirmBooking?.food_slots?.meal_type === "FREE" ? "Cancel Free Meal?" : "Cancel & Refund Meal?"}
+          message={confirmBooking?.food_slots?.meal_type === "FREE"
+            ? "Are you sure you want to cancel this free meal booking? This action cannot be undone."
+            : "Are you sure you want to cancel this booking? A refund will be initiated."}
+          processing={processingCancel}
+          onCancel={() => setConfirmBooking(null)}
+          onConfirm={executeCancellation}
+        />
+
       </div>
     </div>
   );
