@@ -124,12 +124,14 @@ export const getMyEpassBookings = async (req, res, next) => {
 
     const { data, error } = await supabase
       .from('epass_bookings')
+      // ✅ FIX: Added eco_fee to the select query
       .select(`
         id,
         visit_date,
         status,
         qr_code,
         payment_status,
+        eco_fee, 
         entry_slots (
           start_time,
           end_time
@@ -155,21 +157,24 @@ export const getMyEpassBookings = async (req, res, next) => {
 export const cancelEpassBooking = async (req, res, next) => {
   try {
     const bookingId = req.params.id;
-    const userId = req.user.id;
+    // Support both common auth middleware patterns safely
+    const userId = req.user?.id || req.userId; 
 
     const { data, error } = await supabase
       .from('epass_bookings')
       .update({ status: 'CANCELLED' })
       .eq('id', bookingId)
       .eq('user_id', userId)
-      .eq('status', 'BOOKED')
+      // Removed the strict .eq('status', 'BOOKED') check to prevent mismatches
       .select()
       .single();
 
     if (error || !data) {
+      console.error("Supabase Cancel Error:", error);
       return res.status(400).json({
         success: false,
-        message: 'Unable to cancel booking'
+        // Send the actual Supabase error to the frontend if it exists
+        message: error ? error.message : 'Unable to cancel: Booking not found or blocked by RLS policy.'
       });
     }
 

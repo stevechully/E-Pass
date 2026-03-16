@@ -29,7 +29,7 @@ export default function MyFoodBookings() {
     }
   }
 
-  // 🔁 Unified Cancel + Refund Flow
+  // Unified Cancel + Refund Flow for Paid Meals
   const handleCancelAndRefund = async (booking, type) => {
     if (!window.confirm(`Are you sure you want to cancel this ${type.toLowerCase()} and request a refund?`)) return;
 
@@ -89,7 +89,7 @@ export default function MyFoodBookings() {
         {/* Header */}
         <div className="mb-10 text-center">
           <h1 className="text-4xl font-heading font-bold text-slate-800 mb-2">My Meal Coupons</h1>
-          <p className="text-slate-500 font-medium">View your active dining hall bookings and QR codes.</p>
+          <p className="text-slate-500 font-medium">View your active dining hall bookings and manage cancellations.</p>
         </div>
 
         {bookings.length === 0 ? (
@@ -126,8 +126,8 @@ export default function MyFoodBookings() {
                       <p className="text-slate-500 font-bold flex items-center gap-2 mt-1">
                         <Clock size={16} /> {slot.start_time} - {slot.end_time}
                       </p>
-                      <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-2">
-                        {isFree ? "Free Meal (Annadanam)" : "Paid Meal"}
+                      <p className={`text-xs font-bold uppercase tracking-widest mt-2 px-2.5 py-1 w-max rounded-md ${isFree ? "bg-green-50 text-green-700" : "bg-indigo-50 text-indigo-700"}`}>
+                        {isFree ? "FREE MEAL (ANNADANAM)" : "PAID MEAL"}
                       </p>
                     </div>
                   </div>
@@ -150,9 +150,27 @@ export default function MyFoodBookings() {
                       <Download size={18} /> Download PDF
                     </button>
 
+                    {/* ✅ Dynamic Cancel / Refund Button */}
                     {!isCancelled && (
-                      <button onClick={() => handleCancelAndRefund(booking, "FOOD")} className="flex-1 bg-rose-50 hover:bg-rose-100 text-rose-600 py-4 rounded-2xl font-bold transition-all flex items-center justify-center gap-2 border border-rose-100">
-                        <Trash2 size={18} /> Cancel & Refund
+                      <button 
+                        onClick={() => {
+                          if (isFree) {
+                            if (window.confirm("Are you sure you want to cancel this free meal?")) {
+                              cancelBooking(booking.id, "FOOD")
+                                .then(() => {
+                                  alert("Meal cancelled successfully! ✅");
+                                  fetchBookings();
+                                })
+                                .catch(() => alert("Error processing cancellation."));
+                            }
+                          } else {
+                            handleCancelAndRefund(booking, "FOOD");
+                          }
+                        }}
+                        className="flex-1 bg-rose-50 hover:bg-rose-100 text-rose-600 py-4 rounded-2xl font-bold transition-all flex items-center justify-center gap-2 border border-rose-100"
+                      >
+                        <Trash2 size={18} /> 
+                        {isFree ? "Cancel" : "Cancel & Refund"}
                       </button>
                     )}
                   </div>

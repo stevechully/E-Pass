@@ -1,4 +1,5 @@
 import { Routes, Route, Navigate } from "react-router-dom";
+import { Toaster } from "react-hot-toast"; // ✅ Added Toaster
 
 // Standard Auth & Core Pages
 import Login from "./pages/Login";
@@ -43,55 +44,70 @@ import AdminRefunds from "./pages/AdminRefunds";
 
 export default function App() {
   return (
-    <Routes>
-      {/* 🔓 Public Routes */}
-      <Route path="/login" element={<Login />} />
-      <Route path="/register" element={<Register />} />
+    <>
+      {/* ✅ Global Toaster Provider */}
+      <Toaster 
+        position="top-right" 
+        toastOptions={{
+          style: {
+            borderRadius: '12px',
+            background: '#333',
+            color: '#fff',
+            fontWeight: '600',
+          },
+        }}
+      />
+      
+      <Routes>
+        {/* 🔓 Public Routes */}
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
 
-      {/* 🔐 PROTECTED ROUTES */}
-      <Route element={<ProtectedRoute />}>
-        <Route element={<Layout />}> 
-          
-          {/* --- USER PORTAL --- */}
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/bookings" element={<Bookings />} />
-          <Route path="/booking/:module/:id" element={<BookingDetails />} />
-          <Route path="/payments" element={<Payments />} />
+        {/* 🔐 PROTECTED ROUTES */}
+        <Route element={<ProtectedRoute />}>
+          <Route element={<Layout />}> 
+            
+            {/* --- USER PORTAL --- */}
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/bookings" element={<Bookings />} />
+            <Route path="/booking/:module/:id" element={<BookingDetails />} />
+            <Route path="/payments" element={<Payments />} />
 
-          {/* E-Pass, Food, & Accommodation */}
-          <Route path="/epass" element={<EpassBooking />} />
-          <Route path="/my-epass" element={<MyEpass />} />
-          <Route path="/epass/success/:id" element={<EpassSuccess />} />
-          
-          <Route path="/food" element={<FoodBooking />} />
-          <Route path="/my-food" element={<MyFoodBookings />} />
-          <Route path="/food/success/:id" element={<FoodSuccess />} /> 
-          
-          <Route path="/accommodation" element={<AccommodationBooking />} />
-          <Route path="/my-accommodation" element={<MyAccommodation />} />
-          <Route path="/accommodation/success/:id" element={<AccommodationSuccess />} />
+            {/* E-Pass, Food, & Accommodation */}
+            <Route path="/epass" element={<EpassBooking />} />
+            <Route path="/my-epass" element={<MyEpass />} />
+            <Route path="/epass/success/:id" element={<EpassSuccess />} />
+            
+            <Route path="/food" element={<FoodBooking />} />
+            <Route path="/my-food" element={<MyFoodBookings />} />
+            <Route path="/food/success/:id" element={<FoodSuccess />} /> 
+            
+            <Route path="/accommodation" element={<AccommodationBooking />} />
+            <Route path="/my-accommodation" element={<MyAccommodation />} />
+            <Route path="/accommodation/success/:id" element={<AccommodationSuccess />} />
 
-          {/* Vazhipadu / Pooja */}
-          <Route path="/vazhipadu" element={<VazhipaduHome />} /> 
-          <Route path="/vazhipadu/daily" element={<DailyPoojaList />} />
-          <Route path="/vazhipadu/special" element={<SpecialPoojaList />} />
-          <Route path="/vazhipadu/book/:id" element={<VazhipaduBooking />} />
-          <Route path="/vazhipadu/success/:id" element={<VazhipaduSuccess />} /> 
-          <Route path="/my-vazhipadu" element={<MyVazhipadu />} />
-          <Route path="/calendar" element={<PoojaCalendar />} />
-          <Route path="/payment" element={<PaymentPage />} />
+            {/* Vazhipadu / Pooja */}
+            <Route path="/vazhipadu" element={<VazhipaduHome />} /> 
+            <Route path="/vazhipadu/daily" element={<DailyPoojaList />} />
+            <Route path="/vazhipadu/special" element={<SpecialPoojaList />} />
+            <Route path="/vazhipadu/book/:id" element={<VazhipaduBooking />} />
+            <Route path="/vazhipadu/success/:id" element={<VazhipaduSuccess />} /> 
+            <Route path="/my-vazhipadu" element={<MyVazhipadu />} />
+            <Route path="/calendar" element={<PoojaCalendar />} />
+            <Route path="/payment" element={<PaymentPage />} />
 
-          {/* --- ADMIN PANEL --- */}
-          <Route path="/admin" element={<AdminDashboard />} /> 
-          <Route path="/admin/users" element={<AdminUsers />} /> 
-          <Route path="/admin/refunds" element={<AdminRefunds />} />
-          <Route path="/admin/slots" element={<AdminPanel />} />
+            {/* --- ADMIN PANEL --- */}
+            <Route path="/admin" element={<AdminDashboard />} /> 
+            <Route path="/admin/users" element={<AdminUsers />} /> 
+            <Route path="/admin/refunds" element={<AdminRefunds />} />
+            <Route path="/admin/slots" element={<AdminPanel />} />
 
+          </Route>
         </Route>
-      </Route>
 
-      {/* 404 Fallback */}
-      <Route path="*" element={<Navigate to="/login" replace />} />
-    </Routes>
+        {/* 404 Fallback */}
+        <Route path="*" element={<Navigate to="/login" replace />} />
+      </Routes>
+    </>
   );
 }

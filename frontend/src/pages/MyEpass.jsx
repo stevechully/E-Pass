@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { QRCodeCanvas } from "qrcode.react";
 import { jsPDF } from "jspdf";
 import { cancelBooking, requestRefund } from "../services/refundService";
-import { Calendar, Clock, Ticket, Download, Trash2, ShieldCheck } from "lucide-react";
+import { Calendar, Clock, Ticket, Download, Trash2 } from "lucide-react";
 
 export default function MyEpass() {
   const [passes, setPasses] = useState([]);
@@ -29,8 +29,9 @@ export default function MyEpass() {
     }
   }
 
+  // Used ONLY for paid passes
   async function handleCancelAndRefund(pass) {
-    if (!confirm("Are you sure you want to cancel this pass and request a refund?"))
+    if (!window.confirm("Are you sure you want to cancel this pass and request a refund?"))
       return;
 
     try {
@@ -38,7 +39,7 @@ export default function MyEpass() {
       await requestRefund({
         booking_id: pass.id,
         booking_type: "EPASS",
-        amount: 20,
+        amount: pass.eco_fee,
         reason: "User requested cancellation from My E-Pass page",
       });
       alert("E-Pass cancelled and refund requested successfully! ✅");
@@ -67,7 +68,6 @@ export default function MyEpass() {
     );
 
   return (
-    /* ✅ Fix 1: Removed min-h-screen and bg-slate-900 to inherit Layout background */
     <div className="text-slate-800 flex justify-center px-6 py-10 animate-in fade-in duration-500">
       <div className="w-full max-w-3xl">
 
@@ -77,7 +77,7 @@ export default function MyEpass() {
             My E-Passes
           </h1>
           <p className="text-slate-500 font-medium">
-            View your booked temple passes, download them, or request a refund.
+            View your booked temple passes, download them, or manage cancellations.
           </p>
         </div>
 
@@ -89,7 +89,6 @@ export default function MyEpass() {
         ) : (
           <div className="space-y-8">
             {passes.map((pass) => (
-              /* ✅ Fix 2: Changed to bg-white with gold border for Temple Theme */
               <div
                 key={pass.id}
                 className="bg-white border border-amber-100 rounded-[2rem] p-8 shadow-xl relative overflow-hidden"
@@ -117,21 +116,27 @@ export default function MyEpass() {
                     <p className="text-slate-500 font-bold flex items-center gap-2 mt-1">
                       <Clock size={16} /> {pass.entry_slots?.start_time} - {pass.entry_slots?.end_time}
                     </p>
+                    {/* Visual Badge for Free/Paid Pass */}
+                    <p className={`text-xs font-bold uppercase tracking-widest mt-2 px-2.5 py-1 w-max rounded-md ${pass.eco_fee > 0 ? "bg-indigo-50 text-indigo-700" : "bg-green-50 text-green-700"}`}>
+                      {pass.eco_fee > 0 ? `ECO FEE PAID (₹${pass.eco_fee})` : "FREE DARSHAN PASS"}
+                    </p>
                   </div>
                 </div>
 
-                {/* ✅ Fix 3: QR Code Centered with max-width */}
-                <div className="mt-4 p-8 bg-slate-50 rounded-3xl flex flex-col items-center max-w-sm mx-auto border border-slate-100 shadow-inner">
-                  <QRCodeCanvas
-                    value={pass.qr_code}
-                    size={180}
-                    level={"H"}
-                    includeMargin={true}
-                  />
-                  <p className="text-slate-400 text-xs font-mono mt-4 uppercase tracking-[0.2em]">
-                    {pass.qr_code}
-                  </p>
-                </div>
+                {/* QR Code */}
+                {pass.status !== "CANCELLED" && (
+                  <div className="mt-4 p-8 bg-slate-50 rounded-3xl flex flex-col items-center max-w-sm mx-auto border border-slate-100 shadow-inner">
+                    <QRCodeCanvas
+                      value={pass.qr_code}
+                      size={180}
+                      level={"H"}
+                      includeMargin={true}
+                    />
+                    <p className="text-slate-400 text-xs font-mono mt-4 uppercase tracking-[0.2em]">
+                      {pass.qr_code}
+                    </p>
+                  </div>
+                )}
 
                 {/* Buttons */}
                 <div className="flex flex-col sm:flex-row gap-4 mt-8">
@@ -142,12 +147,41 @@ export default function MyEpass() {
                     <Download size={18} /> Download PDF
                   </button>
 
+                  {/* ✅ Dynamic Cancel / Refund Button with Backend bypass for Free passes */}
                   {pass.status === "BOOKED" && (
                     <button
-                      onClick={() => handleCancelAndRefund(pass)}
+                      onClick={() => {
+                        if (pass.eco_fee > 0) {
+                          // Paid Pass -> Goes through your refund service
+                          handleCancelAndRefund(pass);
+                        } else {
+                          // Free Pass -> Safely bypass the refund service and cancel directly!
+                          if (window.confirm("Are you sure you want to cancel this free pass?")) {
+                            const token = localStorage.getItem("token");
+                            fetch(`http://localhost:5000/api/epass/cancel/${pass.id}`, {
+                              method: "POST",
+                              headers: {
+                                "Content-Type": "application/json",
+                                Authorization: `Bearer ${token}`
+                              }
+                            })
+                            .then(res => res.json())
+                            .then(data => {
+                              if (data.success) {
+                                alert("E-Pass cancelled successfully! ✅");
+                                fetchMyPasses();
+                              } else {
+                                alert(data.message || "Failed to cancel booking");
+                              }
+                            })
+                            .catch(() => alert("Error processing cancellation."));
+                          }
+                        }
+                      }}
                       className="flex-1 bg-rose-50 hover:bg-rose-100 text-rose-600 py-4 rounded-2xl font-bold transition-all flex items-center justify-center gap-2 border border-rose-100"
                     >
-                      <Trash2 size={18} /> Cancel & Refund
+                      <Trash2 size={18} />
+                      {pass.eco_fee > 0 ? "Cancel & Refund" : "Cancel"}
                     </button>
                   )}
                 </div>
