@@ -15,6 +15,8 @@ export const getEntrySlots = async (req, res, next) => {
         booked_count
       `)
       .eq('is_active', true)
+      .gte('slot_date', new Date().toISOString().split('T')[0]) // 🚀 Prevents past slots
+      .order('slot_date', { ascending: true }) // 🚀 Added to sort by date first
       .order('start_time', { ascending: true });
 
     if (date) {

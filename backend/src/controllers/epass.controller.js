@@ -7,7 +7,6 @@ import crypto from 'crypto';
  */
 export const createEpassBooking = async (req, res, next) => {
   try {
-    // 🆕 Now accepting eco_fee from the frontend, default to 0 if missing
     const { slot_id, eco_fee = 0 } = req.body;
     const userId = req.user.id;
 
@@ -33,6 +32,15 @@ export const createEpassBooking = async (req, res, next) => {
       });
     }
 
+    // 🚨 Prevent booking past slots (Backend Security)
+    const today = new Date().toISOString().split("T")[0];
+    if (slot.slot_date < today) {
+      return res.status(400).json({
+        success: false,
+        message: "This slot has already expired"
+      });
+    }
+
     // Ensure it's a number
     const finalEcoFee = Number(eco_fee);
 
@@ -45,8 +53,8 @@ export const createEpassBooking = async (req, res, next) => {
         visit_date: slot.slot_date,
         status: 'PENDING', // Wait for payment to mark as BOOKED
         payment_status: 'PENDING',
-        eco_fee: finalEcoFee,       // 🆕 Dynamic fee
-        total_amount: finalEcoFee   // 🆕 Dynamic fee
+        eco_fee: finalEcoFee,       // Dynamic fee
+        total_amount: finalEcoFee   // Dynamic fee
       })
       .select()
       .single();

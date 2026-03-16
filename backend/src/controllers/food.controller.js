@@ -21,10 +21,19 @@ export const createFoodBooking = async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'Food slot not found or inactive' });
     }
 
+    // 🚨 Prevent booking past food slots (Backend Security)
+    const today = new Date().toISOString().split("T")[0];
+    if (slot.slot_date < today) {
+      return res.status(400).json({
+        success: false,
+        message: "This food slot has already expired"
+      });
+    }
+
     const isFree = slot.meal_type === 'FREE';
     const status = isFree ? 'BOOKED' : 'PENDING';
     
-    // ✅ FIX: Always provide a QR code string to satisfy the database NOT NULL constraint
+    // Always provide a QR code string to satisfy the database NOT NULL constraint
     // For pending meals, we use a 'PENDING-' prefix placeholder
     const qrCode = isFree 
       ? `FOOD-${crypto.randomBytes(6).toString('hex').toUpperCase()}` 
@@ -37,7 +46,7 @@ export const createFoodBooking = async (req, res, next) => {
         food_slot_id,
         epass_booking_id: epass_booking_id || null,
         status: status,
-        qr_code: qrCode // ✅ No longer null
+        qr_code: qrCode 
       })
       .select()
       .single();
@@ -65,7 +74,7 @@ export const confirmFoodPayment = async (req, res, next) => {
       .from('food_bookings')
       .update({ 
         status: 'BOOKED', 
-        qr_code: finalQrCode // ✅ Update placeholder to final code
+        qr_code: finalQrCode 
       })
       .eq('id', booking_id)
       .eq('user_id', userId)
