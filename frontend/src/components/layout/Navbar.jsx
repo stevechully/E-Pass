@@ -9,7 +9,7 @@ export default function Navbar() {
 
       {/* Left: App Title */}
       <h1 className="font-heading text-xl text-warmgray">
-        Darshan Pass
+        DarshanPass
       </h1>
 
       {/* Right: Theme toggle */}
